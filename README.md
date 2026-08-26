@@ -1,9 +1,11 @@
 # Slopeyballs
 
-Drag to launch. Thread the rings.
+Hold to spin. Reverse to get a run-up. Spend tickets between runs.
 
 ## Play locally
 
-Double-click `index.html`. No install, no build.
+Double-click `index.html`, or refresh if it is already open.
 
-`R` restarts. `M` mutes.
+Right side / space = spin. Left side / left arrow = reverse. After a stall, tap SPIN / GRIP / MASS to upgrade, then RIDE AGAIN.
+
+`R` restarts. `M` mutes (sound + music).
