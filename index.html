@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Slopeyballs</title>
+  <meta name="description" content="Drag to launch. Thread the rings. Play in the browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@PiousProgrammer">
+  <meta name="twitter:title" content="Slopeyballs">
+  <meta name="twitter:description" content="Drag to launch. Thread the rings. Play in the browser.">
+  <meta property="og:title" content="Slopeyballs">
+  <meta property="og:description" content="Drag to launch. Thread the rings. Play in the browser.">
+  <meta property="og:url" content="https://mwilcome.github.io/slopeyballs/">
+  <meta name="theme-color" content="#120814">
+  <style>
+    html, body { margin: 0; height: 100%; background: #120814; overflow: hidden; touch-action: none; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+
+  const WORLD_W = 1100;
+  const WORLD_H = 540;
+  const BALLS = 5;
+  const BALL_R = 15;
+  const GRAVITY = 980;
+  const MAX_PULL = 150;
+  const LAUNCH_K = 5.4;
+  const MIN_PULL = 18;
+  const RESTITUTION = 0.28;
+  const FRICTION = 0.86;
+  const GROUND_Y = 508;
+
+  const RAMP = [
+    [48, 228], [118, 228], [250, 468], [340, 498], [418, 478], [490, 392]
+  ];
+
+  const START = { x: 92, y: 228 - BALL_R };
+
+  const state = {
+    mode: "title", // title | ready | flying | dead
+    balls: BALLS,
+    score: 0,
+    best: Number(localStorage.getItem("slopeyballs-best") || 0),
+    combo: 0,
+    ball: { x: START.x, y: START.y, vx: 0, vy: 0 },
+    rings: [],
+    particles: [],
+    floaters: [],
+    trail: [],
+    shake: 0,
+    aim: null,
+    shot: 0,
+    mute: false,
+    hidden: false,
+    camX: 0,
+    landedAt: 0,
+    flash: 0
+  };
+
+  let audioCtx = null;
+  const pointer = { x: 0, y: 0, down: false };
+
+  function bestSave() {
+    if (state.score > state.best) {
+      state.best = state.score;
+      localStorage.setItem("slopeyballs-best", String(state.best));
+    }
+  }
+
+  function ensureAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  }
+
+  function beep(freq, dur, type = "sine", vol = 0.08, slide = 0) {
+    if (state.mute || !audioCtx) return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+
+  function makeRings(shot) {
+    const j = shot * 10;
+    return [
+      { x: 620, y: 318 - j * 0.4, r: 48, hue: 188, hit: 0 },
+      { x: 790, y: 214 + (shot % 2 ? 18 : -8), r: 40, hue: 318, hit: 0 },
+      { x: 960, y: 292 - j * 0.2, r: 34, hue: 46, hit: 0 }
+    ];
+  }
+
+  function resetBall() {
+    state.ball.x = START.x;
+    state.ball.y = START.y;
+    state.ball.vx = 0;
+    state.ball.vy = 0;
+    state.aim = null;
+    state.trail = [];
+    state.combo = 0;
+    state.camX = 0;
+    state.rings = makeRings(state.shot);
+    state.mode = "ready";
+  }
+
+  function startRun() {
+    state.balls = BALLS;
+    state.score = 0;
+    state.shot = 0;
+    state.particles.length = 0;
+    state.floaters.length = 0;
+    resetBall();
+  }
+
+  function burst(x, y, color, n, speed) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = speed * (0.4 + Math.random());
+      state.particles.push({
+        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40,
+        life: 0.4 + Math.random() * 0.5, max: 0.9, color, r: 2 + Math.random() * 3
+      });
+    }
+  }
+
+  function floater(x, y, text, color) {
+    state.floaters.push({ x, y, text, color, life: 0.9 });
+  }
+
+  function segNormal(ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    return { nx: -dy / len, ny: dx / len, dx, dy, len };
+  }
+
+  function collideRamp(b, dt) {
+    let hit = false;
+    for (let i = 0; i < RAMP.length - 1; i++) {
+      const ax = RAMP[i][0], ay = RAMP[i][1];
+      const bx = RAMP[i + 1][0], by = RAMP[i + 1][1];
+      const { nx, ny, dx, dy, len } = segNormal(ax, ay, bx, by);
+      let px = nx, py = ny;
+      const toA = { x: b.x - ax, y: b.y - ay };
+      if (px * toA.x + py * toA.y < 0) { px = -nx; py = -ny; }
+      let t = ((b.x - ax) * dx + (b.y - ay) * dy) / (len * len);
+      t = Math.max(0, Math.min(1, t));
+      const cx = ax + dx * t, cy = ay + dy * t;
+      const dist = Math.hypot(b.x - cx, b.y - cy);
+      if (dist < BALL_R + 12) {
+        const pen = BALL_R + 12 - dist;
+        const inv = dist || 1;
+        const ox = (b.x - cx) / inv, oy = (b.y - cy) / inv;
+        b.x += ox * pen;
+        b.y += oy * pen;
+        const vn = b.vx * ox + b.vy * oy;
+        if (vn < 0) {
+          b.vx -= (1 + RESTITUTION) * vn * ox;
+          b.vy -= (1 + RESTITUTION) * vn * oy;
+          b.vx *= FRICTION;
+          hit = true;
+        }
+      }
+    }
+    if (b.y + BALL_R > GROUND_Y) {
+      b.y = GROUND_Y - BALL_R;
+      if (b.vy > 0) {
+        b.vy *= -0.35;
+        b.vx *= 0.72;
+        hit = true;
+        if (Math.abs(b.vy) < 80) b.vy = 0;
+      }
+    }
+    return hit;
+  }
+
+  function predict() {
+    if (!state.aim) return [];
+    const pull = aimVector();
+    const mag = Math.hypot(pull.x, pull.y);
+    if (mag < MIN_PULL) return [];
+    const b = { x: START.x, y: START.y, vx: pull.x * LAUNCH_K, vy: pull.y * LAUNCH_K };
+    const pts = [];
+    for (let i = 0; i < 22; i++) {
+      b.vy += GRAVITY * 0.016;
+      b.x += b.vx * 0.016;
+      b.y += b.vy * 0.016;
+      collideRamp(b, 0.016);
+      if (i % 2 === 0) pts.push([b.x, b.y]);
+      if (b.x > WORLD_W || b.y > WORLD_H) break;
+    }
+    return pts;
+  }
+
+  function aimVector() {
+    const dx = START.x - pointer.x;
+    const dy = START.y - pointer.y;
+    const mag = Math.hypot(dx, dy);
+    const clamp = Math.min(mag, MAX_PULL);
+    const s = mag ? clamp / mag : 0;
+    return { x: dx * s, y: dy * s, mag: clamp };
+  }
+
+  function launch() {
+    const pull = aimVector();
+    if (pull.mag < MIN_PULL) {
+      state.aim = null;
+      return;
+    }
+    state.ball.vx = pull.x * LAUNCH_K;
+    state.ball.vy = pull.y * LAUNCH_K;
+    state.mode = "flying";
+    state.aim = null;
+    state.shot++;
+    beep(140, 0.12, "square", 0.06, 220);
+    beep(280, 0.18, "sine", 0.05, 80);
+  }
+
+  function endShot() {
+    state.balls--;
+    bestSave();
+    state.shake = 6;
+    beep(90, 0.2, "triangle", 0.06, -40);
+    if (state.balls <= 0) {
+      state.mode = "dead";
+      beep(180, 0.35, "sine", 0.07, -120);
+    } else {
+      state.mode = "ready";
+      resetBall();
+    }
+  }
+
+  function checkRings(prevX) {
+    const b = state.ball;
+    for (const ring of state.rings) {
+      if (ring.hit) continue;
+      if (prevX < ring.x && b.x >= ring.x) {
+        const dy = Math.abs(b.y - ring.y);
+        const clean = dy < ring.r - BALL_R * 0.35;
+        const graze = dy < ring.r + BALL_R * 0.6;
+        if (clean || graze) {
+          ring.hit = clean ? 2 : 1;
+          state.combo++;
+          const base = clean ? 100 : 40;
+          const sizeBonus = Math.round((50 - ring.r) * 1.4);
+          const pts = Math.round((base + Math.max(0, sizeBonus)) * (1 + (state.combo - 1) * 0.5));
+          state.score += pts;
+          state.flash = 0.12;
+          state.shake = clean ? 10 : 5;
+          const color = `hsl(${ring.hue} 90% 65%)`;
+          burst(ring.x, ring.y, color, clean ? 28 : 12, clean ? 220 : 120);
+          floater(ring.x, ring.y - ring.r - 8, clean ? `${pts}  CLEAN` : `${pts}`, color);
+          beep(clean ? 660 : 420, 0.14, "sine", 0.07);
+          beep(clean ? 990 : 520, 0.2, "triangle", 0.045);
+          if (state.combo >= 2) beep(880 + state.combo * 80, 0.16, "square", 0.04);
+        }
+      }
+    }
+  }
+
+  function update(dt) {
+    if (state.hidden) return;
+    state.shake *= Math.pow(0.001, dt);
+    state.flash = Math.max(0, state.flash - dt);
+
+    for (const p of state.particles) {
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 420 * dt;
+    }
+    state.particles = state.particles.filter(p => p.life > 0);
+    for (const f of state.floaters) {
+      f.life -= dt;
+      f.y -= 36 * dt;
+    }
+    state.floaters = state.floaters.filter(f => f.life > 0);
+
+    if (state.mode === "ready" && state.aim) {
+      const pull = aimVector();
+      state.ball.x = START.x - pull.x;
+      state.ball.y = START.y - pull.y;
+    } else if (state.mode === "ready") {
+      state.ball.x = START.x;
+      state.ball.y = START.y;
+    }
+
+    if (state.mode !== "flying") {
+      state.camX += (0 - state.camX) * Math.min(1, dt * 4);
+      return;
+    }
+
+    const b = state.ball;
+    const prevX = b.x;
+    b.vy += GRAVITY * dt;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    const bounced = collideRamp(b, dt);
+    if (bounced && Math.hypot(b.vx, b.vy) > 220) {
+      burst(b.x, b.y + BALL_R, "#e8c9a0", 4, 80);
+    }
+
+    state.trail.push({ x: b.x, y: b.y });
+    if (state.trail.length > 16) state.trail.shift();
+
+    checkRings(prevX);
+
+    const speed = Math.hypot(b.vx, b.vy);
+    const onGround = b.y + BALL_R >= GROUND_Y - 0.6 && Math.abs(b.vy) < 40;
+    const off = b.x > WORLD_W + 40 || b.x < -80 || b.y > WORLD_H + 80;
+    if (off || (onGround && speed < 55 && b.x > 200)) {
+      endShot();
+      return;
+    }
+
+    const targetCam = Math.max(0, Math.min(b.x - 280, WORLD_W - 900));
+    state.camX += (targetCam - state.camX) * Math.min(1, dt * 3.2);
+  }
+
+  let view = { scale: 1, ox: 0, oy: 0 };
+
+  function layout() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    const scale = Math.min(w / WORLD_W, h / WORLD_H);
+    view.scale = scale * dpr;
+    view.ox = (w * dpr - WORLD_W * view.scale) / 2;
+    view.oy = (h * dpr - WORLD_H * view.scale) / 2;
+  }
+
+  function toWorld(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = canvas.width / rect.width;
+    const x = (clientX - rect.left) * dpr;
+    const y = (clientY - rect.top) * dpr;
+    return {
+      x: (x - view.ox) / view.scale + state.camX,
+      y: (y - view.oy) / view.scale
+    };
+  }
+
+  function drawSky() {
+    const g = ctx.createLinearGradient(0, 0, 0, WORLD_H);
+    g.addColorStop(0, "#1a0b2e");
+    g.addColorStop(0.55, "#2a1048");
+    g.addColorStop(1, "#4a1d2a");
+    ctx.fillStyle = g;
+    ctx.fillRect(state.camX - 40, -40, WORLD_W + 80, WORLD_H + 80);
+
+    ctx.fillStyle = "rgba(255,214,150,0.9)";
+    ctx.beginPath();
+    ctx.arc(880, 78, 36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(26,11,46,0.25)";
+    ctx.beginPath();
+    ctx.arc(892, 70, 28, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    for (let i = 0; i < 28; i++) {
+      const sx = (i * 137 + 40) % WORLD_W;
+      const sy = (i * 53) % 200 + 12;
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+
+    const tents = [[700, 470, 90, "#6b1d4a"], [820, 478, 70, "#1d4a6b"], [940, 472, 80, "#6b4a1d"]];
+    for (const [x, y, w, col] of tents) {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 70);
+      ctx.lineTo(x + w / 2, y);
+      ctx.lineTo(x - w / 2, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,220,140,0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 70);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+
+  function drawGround() {
+    ctx.fillStyle = "#2a1810";
+    ctx.fillRect(0, GROUND_Y, WORLD_W, WORLD_H - GROUND_Y + 40);
+    ctx.fillStyle = "#3a2418";
+    ctx.fillRect(0, GROUND_Y, WORLD_W, 8);
+    ctx.fillStyle = "rgba(210,170,90,0.15)";
+    for (let i = 0; i < 40; i++) ctx.fillRect(i * 28 + 6, GROUND_Y + 14, 10, 3);
+  }
+
+  function drawRamp() {
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#4a2814";
+    ctx.lineWidth = 28;
+    ctx.beginPath();
+    ctx.moveTo(RAMP[0][0], RAMP[0][1]);
+    for (let i = 1; i < RAMP.length; i++) ctx.lineTo(RAMP[i][0], RAMP[i][1]);
+    ctx.stroke();
+    ctx.strokeStyle = "#c48a4a";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.strokeStyle = "#7a4a24";
+    ctx.lineWidth = 18;
+    ctx.globalAlpha = 0.55;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = "#d4a574";
+    ctx.fillRect(40, 214, 86, 14);
+    ctx.fillStyle = "#8a5230";
+    ctx.fillRect(40, 226, 86, 6);
+
+    ctx.strokeStyle = "#e8c080";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(58, 200);
+    ctx.lineTo(58, 228);
+    ctx.moveTo(126, 200);
+    ctx.lineTo(126, 228);
+    ctx.stroke();
+  }
+
+  function drawRing(ring, pass) {
+    ctx.save();
+    ctx.translate(ring.x, ring.y);
+    ctx.scale(0.22, 1);
+    const glow = ring.hit ? 1 : 0.55;
+    ctx.strokeStyle = `hsla(${ring.hue} 90% 60% / ${glow})`;
+    ctx.shadowColor = `hsl(${ring.hue} 100% 60%)`;
+    ctx.shadowBlur = ring.hit ? 24 : 12;
+    ctx.lineWidth = 16;
+    ctx.beginPath();
+    if (pass === "back") ctx.arc(0, 0, ring.r, Math.PI * 0.5, Math.PI * 1.5);
+    else ctx.arc(0, 0, ring.r, Math.PI * 1.5, Math.PI * 0.5);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = `hsla(${ring.hue} 100% 80% / 0.9)`;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBall() {
+    const b = state.ball;
+    for (let i = 0; i < state.trail.length; i++) {
+      const t = state.trail[i];
+      ctx.globalAlpha = (i / state.trail.length) * 0.35;
+      ctx.fillStyle = "#fff6d8";
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, BALL_R * (i / state.trail.length) * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    const grd = ctx.createRadialGradient(b.x - 5, b.y - 6, 4, b.x, b.y, BALL_R);
+    grd.addColorStop(0, "#fff1d0");
+    grd.addColorStop(0.55, "#e23b3b");
+    grd.addColorStop(1, "#8a1420");
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#fff6a8";
+    ctx.beginPath();
+    const s = 5;
+    ctx.moveTo(b.x, b.y - s);
+    for (let i = 1; i < 5; i++) {
+      const a = -Math.PI / 2 + i * Math.PI * 0.8;
+      ctx.lineTo(b.x + Math.cos(a) * s, b.y + Math.sin(a) * s);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawAim() {
+    if (state.mode !== "ready" || !state.aim) return;
+    const pull = aimVector();
+    const bx = START.x - pull.x;
+    const by = START.y - pull.y;
+    ctx.strokeStyle = "rgba(255,210,140,0.85)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(58, 200);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(126, 200);
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(bx, by, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    const dots = predict();
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    for (let i = 0; i < dots.length; i++) {
+      ctx.globalAlpha = 0.5 - i * 0.02;
+      ctx.beginPath();
+      ctx.arc(dots[i][0], dots[i][1], 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = "rgba(255,230,180,0.8)";
+    ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText("release", bx + 10, by - 10);
+  }
+
+  function drawHud() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const dpr = canvas.width / canvas.getBoundingClientRect().width;
+    const w = canvas.width, h = canvas.height;
+    ctx.scale(dpr, dpr);
+    const cssW = w / dpr, cssH = h / dpr;
+    ctx.font = "600 18px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillStyle = "#ffe9b8";
+    ctx.fillText(`SCORE  ${state.score}`, 18, 32);
+    ctx.fillStyle = "rgba(255,233,184,0.65)";
+    ctx.font = "14px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText(`BEST  ${state.best}`, 18, 52);
+
+    for (let i = 0; i < BALLS; i++) {
+      ctx.beginPath();
+      ctx.fillStyle = i < state.balls ? "#e23b3b" : "rgba(255,255,255,0.15)";
+      ctx.arc(cssW - 22 - i * 22, 28, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (state.mode === "title" || state.mode === "dead") {
+      ctx.fillStyle = "rgba(8,4,14,0.55)";
+      ctx.fillRect(0, 0, cssW, cssH);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffe9b8";
+      ctx.font = "800 42px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText("SLOPEYBALLS", cssW / 2, cssH / 2 - 36);
+      ctx.font = "16px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = "rgba(255,233,184,0.85)";
+      if (state.mode === "title") {
+        ctx.fillText("Drag back to launch. Thread the rings.", cssW / 2, cssH / 2 + 4);
+        ctx.fillText("Tap to play", cssW / 2, cssH / 2 + 40);
+      } else {
+        ctx.fillText(`Score ${state.score}   ·   Best ${state.best}`, cssW / 2, cssH / 2 + 4);
+        ctx.fillText("Tap to shoot again", cssW / 2, cssH / 2 + 40);
+      }
+      ctx.textAlign = "left";
+    } else if (state.mode === "ready" && !state.aim) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255,233,184,0.7)";
+      ctx.font = "15px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText("Drag to aim", cssW / 2, cssH - 28);
+      ctx.textAlign = "left";
+    }
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const sx = state.shake * (Math.random() * 2 - 1);
+    const sy = state.shake * (Math.random() * 2 - 1);
+    ctx.setTransform(view.scale, 0, 0, view.scale, view.ox + sx, view.oy + sy);
+    ctx.translate(-state.camX, 0);
+
+    drawSky();
+    drawGround();
+    drawRamp();
+
+    const b = state.ball;
+    const sorted = state.rings.slice().sort((a, c) => a.x - c.x);
+    let drawnBall = false;
+    const drawBallNow = () => { if (!drawnBall && state.mode !== "title") { drawBall(); drawnBall = true; } };
+
+    for (const ring of sorted) {
+      if (b.x < ring.x) drawBallNow();
+      drawRing(ring, "back");
+    }
+    drawBallNow();
+    for (const ring of sorted) drawRing(ring, "front");
+
+    for (const p of state.particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.font = "bold 16px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    for (const f of state.floaters) {
+      ctx.globalAlpha = Math.max(0, f.life / 0.9);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "left";
+
+    drawAim();
+
+    if (state.flash > 0) {
+      ctx.fillStyle = `rgba(255,255,240,${state.flash * 0.35})`;
+      ctx.fillRect(state.camX - 50, -50, WORLD_W + 100, WORLD_H + 100);
+    }
+
+    drawHud();
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function onDown(x, y) {
+    ensureAudio();
+    const w = toWorld(x, y);
+    pointer.x = w.x;
+    pointer.y = w.y;
+    pointer.down = true;
+    if (state.mode === "title" || state.mode === "dead") {
+      startRun();
+      beep(520, 0.08, "sine", 0.05);
+      return;
+    }
+    if (state.mode === "ready") state.aim = true;
+  }
+
+  function onMove(x, y) {
+    const w = toWorld(x, y);
+    pointer.x = w.x;
+    pointer.y = w.y;
+  }
+
+  function onUp() {
+    if (state.mode === "ready" && state.aim && pointer.down) launch();
+    pointer.down = false;
+  }
+
+  canvas.addEventListener("pointerdown", e => { e.preventDefault(); canvas.setPointerCapture(e.pointerId); onDown(e.clientX, e.clientY); });
+  canvas.addEventListener("pointermove", e => { onMove(e.clientX, e.clientY); });
+  canvas.addEventListener("pointerup", e => { e.preventDefault(); onUp(); });
+  canvas.addEventListener("pointercancel", onUp);
+
+  window.addEventListener("keydown", e => {
+    if (e.key === "r" || e.key === "R") startRun();
+    if (e.key === "m" || e.key === "M") state.mute = !state.mute;
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (state.mode === "title" || state.mode === "dead") startRun();
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    state.hidden = document.hidden;
+    if (!document.hidden) last = performance.now();
+  });
+
+  window.addEventListener("resize", layout);
+  layout();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
