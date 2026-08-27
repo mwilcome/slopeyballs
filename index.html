@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Slopeyballs</title>
-  <meta name="description" content="Hold to spin. Ride the hills. Play in the browser.">
+  <meta name="description" content="Rooftop platformer. Charge a jump. Glide. Pick a map.">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:site" content="@PiousProgrammer">
   <meta name="twitter:title" content="Slopeyballs">
-  <meta name="twitter:description" content="Hold to spin. Ride the hills. Play in the browser.">
+  <meta name="twitter:description" content="Rooftop platformer. Charge a jump. Glide. Pick a map.">
   <meta property="og:title" content="Slopeyballs">
-  <meta property="og:description" content="Hold to spin. Ride the hills. Play in the browser.">
+  <meta property="og:description" content="Rooftop platformer. Charge a jump. Glide. Pick a map.">
   <meta property="og:url" content="https://mwilcome.github.io/slopeyballs/">
   <meta name="theme-color" content="#12082a">
   <style>
@@ -22,939 +22,1280 @@
 <canvas id="c"></canvas>
 <script>
 (() => {
-  const canvas = document.getElementById("c");
-  const ctx = canvas.getContext("2d");
-  const BANDS = ["#fff6a8", "#ffe14a", "#ffb02e", "#ff7a3c", "#ff4da0", "#ff2d88", "#c42cff", "#6b1ad6"];
-  const SAVE = "slopeyballs-save";
-
-  const defaults = () => ({ spin: 0, grip: 0, mass: 0, tickets: 0, best: 0 });
-  function loadSave() {
-    try { return { ...defaults(), ...JSON.parse(localStorage.getItem(SAVE) || "{}") }; }
-    catch { return defaults(); }
-  }
-  function writeSave() {
-    localStorage.setItem(SAVE, JSON.stringify({
-      spin: up.spin, grip: up.grip, mass: up.mass, tickets: up.tickets, best: up.best
-    }));
-  }
-  const up = loadSave();
-  if (!up.best) up.best = Number(localStorage.getItem("slopeyballs-best") || 0);
-
-  function ballR() { return 20 + up.mass * 2.2; }
-  function spinForce() { return 2400 + up.spin * 480; }
-  function gravity() { return 2000 + up.mass * 180; }
-  function gripStick() { return 0.07 * Math.pow(0.72, up.grip); }
-  function maxSpeed() { return 1500 + up.spin * 80 - up.mass * 40; }
-  function cost(level) { return 20 * (level + 1) * (level + 1); }
-
-  const state = {
-    mode: "title",
-    hold: false,
-    rev: false,
-    mute: false,
-    hidden: false,
-    x: 80, y: 400, vx: 0, vy: 0,
-    spin: 0, omega: 0, grounded: false,
-    maxX: 80, progressX: 80, stall: 0, reason: "",
-    runMeters: 0,
-    camX: 0, camY: 80, horizonY: 400, shake: 0, flash: 0,
-    dust: [],
-    seed: 1
-  };
-
-  let audioCtx = null;
-  let hum = null;
-  let music = null;
-
-  function rng(seed) {
-    let s = seed | 0;
-    return () => {
-      s = (s * 1664525 + 1013904223) >>> 0;
-      return s / 4294967296;
-    };
-  }
-
-  const pts = [];
-  let rand = rng(1);
-  const MAX_UP = 0.52;
-
-  function lastX() { return pts.length ? pts[pts.length - 2] : 0; }
-  function lastY() { return pts.length ? pts[pts.length - 1] : 430; }
-
-  function add(nx, ny, steepDown) {
-    if (pts.length >= 2) {
-      const lx = pts[pts.length - 2];
-      const ly = pts[pts.length - 1];
-      if (nx <= lx) nx = lx + 48;
-      const dx = nx - lx;
-      if (ny > ly) ny = Math.min(ly + dx * MAX_UP, ny);
-      else ny = Math.max(ly - dx * (steepDown ? 1.18 : 0.9), ny);
-    }
-    pts.push(nx, ny);
-  }
-
-  function appendChunk() {
-    let x = lastX();
-    let y = lastY();
-    const d = Math.min(1.4, Math.max(0, (x - 400) / 9000));
-    const r = rand();
-
-    function huge() {
-      const w = 700 + rand() * (500 + d * 1400);
-      const want = 120 + rand() * (90 + d * 280);
-      const rise = Math.min(want, (w * 0.5) * MAX_UP);
-      add(lastX() + w * 0.5, lastY() - rise);
-      add(lastX() + w * 0.5, lastY() + rise * (0.05 + rand() * 0.25), true);
-    }
-    function rollers() {
-      const n = 2 + ((rand() * (2 + d)) | 0);
-      for (let i = 0; i < n; i++) {
-        const w = 70 + rand() * 90;
-        const a = 22 + rand() * (28 + d * 40);
-        const base = lastY();
-        add(lastX() + w, base - a);
-        add(lastX() + w, base + a * (0.1 + rand() * 0.2));
-      }
-    }
-    function drop() {
-      const w = 280 + rand() * (200 + d * 400);
-      add(lastX() + w, lastY() + (70 + rand() * (50 + d * 90)), true);
-    }
-    function rest() {
-      add(lastX() + 140 + rand() * 120, lastY() + (rand() - 0.5) * 18);
-    }
-
-    if (x < 600) rest();
-    else if (r < 0.28) huge();
-    else if (r < 0.52) rollers();
-    else if (r < 0.7) drop();
-    else if (r < 0.84) { rollers(); huge(); }
-    else rest();
-
-    if (lastY() < -200) add(lastX() + 200, lastY() + 80, true);
-    if (lastY() > 900) add(lastX() + 200, lastY() - 80);
-  }
-
-  function buildStart(seed) {
-    pts.length = 0;
-    rand = rng(seed);
-    add(-400, 440);
-    add(480, 440);
-    let guard = 0;
-    while (lastX() < 2500 && guard++ < 80) appendChunk();
-  }
-
-  function ensureTerrain() {
-    let guard = 0;
-    while (lastX() < state.x + 5000 && guard++ < 40) appendChunk();
-    while (pts.length > 8 && pts[6] < state.camX - 2500) pts.splice(0, 2);
-  }
-
-  function segIndex(x) {
-    let lo = 0, hi = (pts.length / 2) - 2;
-    if (hi < 0) return 0;
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >> 1;
-      if (pts[mid * 2] <= x) lo = mid;
-      else hi = mid - 1;
-    }
-    return lo;
-  }
-
-  function heightAt(x) {
-    const i = Math.max(0, Math.min(segIndex(x), pts.length / 2 - 2));
-    const x0 = pts[i * 2], y0 = pts[i * 2 + 1];
-    const x1 = pts[i * 2 + 2], y1 = pts[i * 2 + 3];
-    const span = x1 - x0 || 1;
-    let t = (x - x0) / span;
-    t = Math.max(0, Math.min(1, t));
-    t = t * t * (3 - 2 * t);
-    return y0 + (y1 - y0) * t;
-  }
-
-  function slopeAt(x) {
-    return (heightAt(x + 4) - heightAt(x - 4)) / 8;
-  }
-
-  function meters() {
-    return Math.max(0, Math.floor((state.maxX - 80) / 8));
-  }
-
-  function ensureAudio() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    startMusic();
-  }
-
-  function beep(freq, dur, type = "sine", vol = 0.07, slide = 0) {
-    if (state.mute || !audioCtx) return;
-    const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(freq, t);
-    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g);
-    g.connect(audioCtx.destination);
-    o.start(t);
-    o.stop(t + dur + 0.02);
-  }
-
-  function setHum(on) {
-    if (state.mute || !audioCtx) {
-      if (hum) { hum.stop(); hum = null; }
-      return;
-    }
-    if (on && !hum) {
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = "sawtooth";
-      o.frequency.value = 62;
-      g.gain.value = 0.018;
-      o.connect(g);
-      g.connect(audioCtx.destination);
-      o.start();
-      hum = { stop() { o.stop(); hum = null; }, osc: o };
-    }
-    if (!on && hum) hum.stop();
-    if (on && hum) {
-      const spd = Math.hypot(state.vx, state.vy);
-      hum.osc.frequency.setTargetAtTime(62 + spd * 0.07, audioCtx.currentTime, 0.08);
-    }
-  }
-
-  function noiseBuf() {
-    const n = audioCtx.sampleRate * 0.25;
-    const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
-    return buf;
-  }
-
-  function startMusic() {
-    if (music || !audioCtx || state.mute) return;
-    const master = audioCtx.createGain();
-    master.gain.value = 0.07;
-    master.connect(audioCtx.destination);
-    const nb = noiseBuf();
-    let step = 0;
-    const bpm = 104;
-    const interval = 60 / bpm / 2;
-    const bass = [82.41, 82.41, 110, 110, 98, 98, 73.42, 73.42];
-    const arp = [329.63, 392, 493.88, 587.33, 493.88, 392, 329.63, 261.63];
-
-    function blip(freq, dur, type, vol, t) {
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = type;
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(vol, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g);
-      g.connect(master);
-      o.start(t);
-      o.stop(t + dur + 0.02);
-    }
-    function drum(kind, t) {
-      if (kind === "k") {
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.frequency.setValueAtTime(90, t);
-        o.frequency.exponentialRampToValueAtTime(38, t + 0.12);
-        g.gain.setValueAtTime(0.9, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-        o.connect(g);
-        g.connect(master);
-        o.start(t);
-        o.stop(t + 0.16);
-      } else {
-        const src = audioCtx.createBufferSource();
-        const g = audioCtx.createGain();
-        const f = audioCtx.createBiquadFilter();
-        src.buffer = nb;
-        f.type = kind === "s" ? "highpass" : "highpass";
-        f.frequency.value = kind === "s" ? 1800 : 8000;
-        g.gain.setValueAtTime(kind === "s" ? 0.22 : 0.07, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + (kind === "s" ? 0.12 : 0.04));
-        src.connect(f);
-        f.connect(g);
-        g.connect(master);
-        src.start(t);
-        src.stop(t + 0.15);
-      }
-    }
-
-    const id = setInterval(() => {
-      if (state.mute || !audioCtx) return;
-      const t = audioCtx.currentTime + 0.03;
-      const s = step % 8;
-      if (s === 0 || s === 4) drum("k", t);
-      if (s === 2 || s === 6) drum("s", t);
-      drum("h", t);
-      blip(bass[s], 0.28, "sawtooth", 0.22, t);
-      blip(arp[s] * 2, 0.09, "square", 0.045, t);
-      step++;
-    }, interval * 1000);
-
-    music = {
-      stop() {
-        clearInterval(id);
-        master.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-        music = null;
+  /* ── Kernel ─────────────────────────────────────────────── */
+  const Kernel = (() => {
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const bus = {
+      _h: Object.create(null),
+      on(ev, fn) {
+        (this._h[ev] || (this._h[ev] = [])).push(fn);
+      },
+      emit(ev, payload) {
+        const list = this._h[ev];
+        if (list) for (const fn of list) fn(payload);
       }
     };
-  }
+    const view = { w: 1, h: 1, s: 1 };
+    let mute = false;
 
-  function burst(x, y, n, color) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI - 0.2;
-      const s = 80 + Math.random() * 160;
-      state.dust.push({
-        x, y, vx: Math.cos(a) * s * 0.25 - 30, vy: -Math.random() * s,
-        life: 0.25 + Math.random() * 0.35, color, r: 1.4 + Math.random() * 2.2
+    function layout() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      view.w = w;
+      view.h = h;
+      view.s = dpr;
+    }
+
+    function setMute(v) {
+      mute = !!v;
+      bus.emit("mute", mute);
+    }
+
+    window.addEventListener("resize", layout);
+    layout();
+
+    return {
+      canvas, ctx, bus, view,
+      isMute() { return mute; },
+      setMute,
+      layout
+    };
+  })();
+
+  /* ── Progression (save only; shop UI lives in Menus) ───── */
+  const Progression = (() => {
+    const KEY = "slopeyballs-save";
+    const CAP = 5;
+    const empty = () => ({ jump: 1, glide: 1, speed: 1, tickets: 0, best: 0 });
+
+    function load() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(KEY) || "{}");
+        return { ...empty(), ...raw, jump: raw.jump || 1, glide: raw.glide || 1, speed: raw.speed || 1 };
+      } catch {
+        return empty();
+      }
+    }
+
+    let data = load();
+
+    function save() {
+      localStorage.setItem(KEY, JSON.stringify(data));
+    }
+
+    function cost(level) {
+      return 20 * level * level;
+    }
+
+    function snapshot() {
+      return { ...data, cap: CAP, nextCost: { jump: cost(data.jump), glide: cost(data.glide), speed: cost(data.speed) } };
+    }
+
+    function buy(stat) {
+      if (!Object.prototype.hasOwnProperty.call(data, stat)) return false;
+      if (data[stat] >= CAP) return false;
+      const c = cost(data[stat]);
+      if (data.tickets < c) return false;
+      data.tickets -= c;
+      data[stat] += 1;
+      save();
+      Kernel.bus.emit("progressed", snapshot());
+      return true;
+    }
+
+    function resetAll() {
+      data = empty();
+      save();
+      Kernel.bus.emit("progressed", snapshot());
+    }
+
+    function recordRun({ distance, finished }) {
+      const meters = Math.max(0, distance | 0);
+      const earned = Math.max(1, Math.floor(meters / 10)) + (finished ? 50 : 0);
+      data.tickets += earned;
+      if (meters > data.best) data.best = meters;
+      save();
+      Kernel.bus.emit("progressed", snapshot());
+      return { distance: meters, earned, finished: !!finished, tickets: data.tickets, best: data.best };
+    }
+
+    return { snapshot, buy, resetAll, recordRun, cost, CAP };
+  })();
+
+  /* ── Buildings ──────────────────────────────────────────── */
+  const Buildings = (() => {
+    const GROUND_Y = 560;
+
+    function pack(id, name, blurb, specs) {
+      let x = 40;
+      const buildings = specs.map(s => {
+        const b = {
+          x,
+          w: s.w,
+          h: s.h,
+          roof: s.roof || "flat",
+          peak: s.peak == null ? 36 : s.peak,
+          hue: s.hue
+        };
+        x += s.w + (s.gap == null ? 24 : s.gap);
+        return b;
       });
-    }
-  }
-
-  function resetRun() {
-    state.seed = (Math.random() * 1e9) | 0;
-    buildStart(state.seed);
-    const R = ballR();
-    state.x = 90;
-    state.y = heightAt(90) - R;
-    state.vx = 0;
-    state.vy = 0;
-    state.spin = 0;
-    state.omega = 0;
-    state.maxX = 90;
-    state.progressX = 90;
-    state.stall = 0;
-    state.reason = "";
-    state.runMeters = 0;
-    state.camX = 0;
-    state.camY = state.y - view.cssH * 0.58;
-    state.horizonY = heightAt(state.x) - state.camY;
-    state.dust.length = 0;
-    state.mode = "play";
-    state.flash = 0.08;
-  }
-
-  function crash(reason) {
-    if (state.mode !== "play") return;
-    state.mode = "dead";
-    state.reason = reason || "";
-    state.hold = false;
-    state.rev = false;
-    setHum(false);
-    const m = meters();
-    state.runMeters = m;
-    const earned = Math.max(1, Math.floor(m / 8));
-    up.tickets += earned;
-    if (m > up.best) up.best = m;
-    writeSave();
-    state.shake = 10;
-    beep(90, 0.28, "square", 0.06, -50);
-  }
-
-  function tryBuy(stat) {
-    const c = cost(up[stat]);
-    if (up.tickets < c) {
-      beep(140, 0.08, "square", 0.04);
-      return;
-    }
-    up.tickets -= c;
-    up[stat]++;
-    writeSave();
-    beep(520, 0.1, "sine", 0.06);
-    beep(780, 0.14, "triangle", 0.04);
-  }
-
-  function update(dt) {
-    if (state.hidden) return;
-    state.shake *= Math.pow(0.002, dt);
-    state.flash = Math.max(0, state.flash - dt * 2);
-    for (const p of state.dust) {
-      p.life -= dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += 500 * dt;
-    }
-    state.dust = state.dust.filter(p => p.life > 0);
-
-    if (state.mode !== "play") {
-      setHum(false);
-      return;
+      const last = buildings[buildings.length - 1];
+      return {
+        id, name, blurb, groundY: GROUND_Y, buildings,
+        gate: { x: last.x + last.w * 0.5, building: last }
+      };
     }
 
-    ensureTerrain();
-    const R = ballR();
-    const spinning = state.hold || state.rev;
-    const dir = state.rev ? -1 : state.hold ? 1 : 0;
+    const BLOCKS = pack("blocks", "Blocks", "Gaps, drops, and a few tall ones. Don't fall.", [
+      { w: 280, h: 150, roof: "flat", gap: 80, hue: 250 },
+      { w: 150, h: 145, roof: "flat", gap: 64, hue: 270 },
+      { w: 160, h: 220, roof: "ramp-right", peak: 52, gap: 96, hue: 220 },
+      { w: 170, h: 240, roof: "flat", gap: 156, hue: 290 },
+      { w: 130, h: 95, roof: "flat", gap: 44, hue: 240 },
+      { w: 110, h: 85, roof: "flat", gap: 44, hue: 260 },
+      { w: 190, h: 270, roof: "peak", peak: 46, gap: 92, hue: 210 },
+      { w: 120, h: 255, roof: "flat", gap: 198, hue: 280 },
+      { w: 160, h: 165, roof: "ramp-left", peak: 38, gap: 86, hue: 230 },
+      { w: 100, h: 80, roof: "flat", gap: 38, hue: 300 },
+      { w: 100, h: 72, roof: "flat", gap: 38, hue: 245 },
+      { w: 150, h: 68, roof: "flat", gap: 148, hue: 255 },
+      { w: 200, h: 250, roof: "ramp-right", peak: 88, gap: 70, hue: 265 },
+      { w: 150, h: 340, roof: "flat", gap: 64, hue: 215 },
+      { w: 140, h: 385, roof: "flat", gap: 60, hue: 275 },
+      { w: 220, h: 460, roof: "peak", peak: 48, gap: 104, hue: 285 },
+      { w: 150, h: 210, roof: "ramp-left", peak: 42, gap: 88, hue: 235 },
+      { w: 180, h: 200, roof: "flat", gap: 58, hue: 295 },
+      { w: 120, h: 130, roof: "flat", gap: 128, hue: 248 },
+      { w: 170, h: 250, roof: "flat", gap: 160, hue: 218 },
+      { w: 150, h: 155, roof: "flat", gap: 46, hue: 268 },
+      { w: 130, h: 165, roof: "flat", gap: 46, hue: 258 },
+      { w: 190, h: 300, roof: "ramp-right", peak: 50, gap: 42, hue: 228 },
+      { w: 140, h: 220, roof: "flat", gap: 214, hue: 278 },
+      { w: 180, h: 185, roof: "flat", gap: 80, hue: 238 },
+      { w: 160, h: 270, roof: "peak", peak: 42, gap: 92, hue: 288 },
+      { w: 200, h: 230, roof: "flat", gap: 40, hue: 242 },
+      { w: 170, h: 250, roof: "flat", gap: 48, hue: 262 }
+    ]);
 
-    const dydx = slopeAt(state.x);
-    const len = Math.hypot(1, dydx) || 1;
-    const tx = 1 / len, ty = dydx / len;
-    const nx = dydx / len, ny = -1 / len;
-    const ground = heightAt(state.x);
-    const dist = ground - state.y;
+    const catalog = [BLOCKS];
+    let active = BLOCKS;
+    let camX = 0;
 
-    if (dist < R) {
-      const push = R - dist;
-      state.x += nx * push;
-      state.y += ny * push;
-      const vn = state.vx * nx + state.vy * ny;
-      if (vn < 0) {
-        const hard = -vn > 520;
-        const stick = spinning ? 1.02 : 1.18;
-        state.vx -= vn * nx * stick;
-        state.vy -= vn * ny * stick;
-        if (hard) {
-          state.shake = Math.min(12, -vn * 0.012);
-          burst(state.x, state.y + R * 0.6, 8, "rgba(255,180,80,0.5)");
-          beep(220, 0.06, "triangle", 0.03);
+    function listMaps() {
+      return catalog.map(m => ({ id: m.id, name: m.name, blurb: m.blurb }));
+    }
+    function getMap(id) { return catalog.find(m => m.id === id) || null; }
+
+    function load(id) {
+      active = getMap(id) || BLOCKS;
+      camX = 0;
+      return active;
+    }
+
+    function eaveY(b) { return active.groundY - b.h; }
+
+    function roofYOn(b, wx) {
+      const local = wx - b.x;
+      if (local < 0 || local > b.w) return null;
+      const eave = eaveY(b);
+      const peak = b.peak;
+      if (b.roof === "peak") {
+        const mid = b.w / 2;
+        const t = local < mid ? local / mid : (b.w - local) / mid;
+        return eave - peak * t;
+      }
+      if (b.roof === "ramp-right") return eave - peak * (local / b.w);
+      if (b.roof === "ramp-left") return eave - peak * (1 - local / b.w);
+      return eave;
+    }
+
+    function buildingAt(wx) {
+      const list = active.buildings;
+      for (let i = 0; i < list.length; i++) {
+        const b = list[i];
+        if (wx >= b.x && wx <= b.x + b.w) return b;
+      }
+      return null;
+    }
+
+    function roofY(wx) {
+      const b = buildingAt(wx);
+      return b ? roofYOn(b, wx) : null;
+    }
+
+    function slope(wx) {
+      const a = roofY(wx - 3);
+      const b = roofY(wx + 3);
+      if (a == null || b == null) return 0;
+      return (b - a) / 6;
+    }
+
+    function gate() {
+      const g = active.gate;
+      const y = roofYOn(g.building, g.x);
+      return { x: g.x, y };
+    }
+
+    function bounds() {
+      const list = active.buildings;
+      const last = list[list.length - 1];
+      return { minX: 0, maxX: last.x + last.w + 200, groundY: active.groundY };
+    }
+
+    function setCam(x) {
+      const b = bounds();
+      const vis = Kernel.view.w;
+      camX = Math.max(b.minX, Math.min(x, b.maxX - vis));
+    }
+
+    function roofPoly(b) {
+      const eave = eaveY(b);
+      const x0 = b.x, x1 = b.x + b.w, pk = b.peak;
+      if (b.roof === "peak") {
+        return [[x0, eave], [x0 + b.w / 2, eave - pk], [x1, eave]];
+      }
+      if (b.roof === "ramp-right") {
+        return [[x0, eave], [x1, eave - pk], [x1, eave]];
+      }
+      if (b.roof === "ramp-left") {
+        return [[x0, eave], [x0, eave - pk], [x1, eave]];
+      }
+      return [[x0, eave], [x1, eave]];
+    }
+
+    function screenY(wy) {
+      return wy + (Kernel.view.h - 48) - GROUND_Y;
+    }
+
+    return {
+      listMaps, getMap, load, roofY, roofYOn, slope, buildingAt, gate, bounds,
+      roofPoly, eaveY, screenY,
+      groundY() { return active.groundY; },
+      buildings() { return active.buildings; },
+      camX() { return camX; },
+      setCam
+    };
+  })();
+
+  /* ── Ball ───────────────────────────────────────────────── */
+  const Ball = (() => {
+    const R = 22;
+    const GRAVITY = 2450;
+    const intent = { roll: 0, jumpHeld: false };
+
+    const LAND = 22;
+    let x = 80, y = 200, vx = 0, vy = 0;
+    let spin = 0, grounded = false, charging = false, charge = 0;
+    let meter = 1, startX = 80, alive = true, glidingNow = false;
+
+    function stats() { return Progression.snapshot(); }
+
+    function accel() {
+      const s = stats().speed;
+      return 1680 + s * 260;
+    }
+    function maxVx() {
+      return 200 + stats().speed * 44;
+    }
+    function jumpSpeed() {
+      return 470 + stats().jump * 145;
+    }
+    function glideAccel() {
+      const g = stats().glide;
+      if (g >= 5) return -260;
+      if (g >= 4) return -90;
+      if (g >= 3) return 28;
+      if (g >= 2) return GRAVITY * 0.10;
+      return GRAVITY * 0.18;
+    }
+    function glideSink() {
+      const g = stats().glide;
+      if (g >= 5) return -90;
+      if (g >= 4) return 16;
+      if (g >= 3) return 80;
+      if (g >= 2) return 170;
+      return 250;
+    }
+
+    function spawn() {
+      const list = Buildings.buildings();
+      const b = list[0];
+      x = b.x + 48;
+      y = Buildings.roofYOn(b, x) - R;
+      vx = 0;
+      vy = 0;
+      spin = 0;
+      charge = 0;
+      charging = false;
+      meter = 1;
+      grounded = true;
+      glidingNow = false;
+      startX = x;
+      alive = true;
+    }
+
+    function setIntent(next) {
+      if (next.roll != null) intent.roll = next.roll;
+      if (next.jumpHeld != null) {
+        if (next.jumpHeld && !intent.jumpHeld && grounded) charging = true;
+        intent.jumpHeld = next.jumpHeld;
+      }
+    }
+
+    function releaseJump() {
+      if (!alive) return;
+      if (grounded && charging) {
+        const t = 0.5 + 0.5 * charge;
+        vy = -jumpSpeed() * t;
+        vx += intent.roll * 50 * t;
+        grounded = false;
+        charging = false;
+        charge = 0;
+        Kernel.bus.emit("jumped", { charge: t });
+      }
+      intent.jumpHeld = false;
+    }
+
+    function resolveWalls() {
+      const list = Buildings.buildings();
+      const gy = Buildings.groundY();
+      for (let i = 0; i < list.length; i++) {
+        const b = list[i];
+        if (x + R <= b.x || x - R >= b.x + b.w) continue;
+        const rx = Math.max(b.x, Math.min(x, b.x + b.w));
+        const roof = Buildings.roofYOn(b, rx);
+        if (roof == null) continue;
+        if (y + R <= roof + LAND) continue;
+        if (y - R >= gy) continue;
+        const leftDist = Math.abs(x + R - b.x);
+        const rightDist = Math.abs(x - R - (b.x + b.w));
+        if (leftDist < rightDist) {
+          x = b.x - R;
+          if (vx > 0) vx = 0;
+        } else {
+          x = b.x + b.w + R;
+          if (vx < 0) vx = 0;
         }
       }
-      state.grounded = true;
-    } else state.grounded = false;
-
-    state.vy += gravity() * dt;
-
-    if (dir) {
-      state.omega += 18 * dt * dir;
-      if (state.grounded) {
-        state.vx += tx * spinForce() * dir * dt;
-        state.vy += ty * spinForce() * dir * dt;
-        if (Math.random() < dt * 16) burst(state.x - 8 * dir, state.y + R * 0.4, 1, "rgba(255,90,180,0.5)");
-      } else state.vx += 70 * dir * dt;
-    } else state.omega *= Math.pow(0.25, dt);
-
-    if (state.grounded) {
-      let vt = state.vx * tx + state.vy * ty;
-      let vn2 = state.vx * nx + state.vy * ny;
-      vt *= spinning ? 0.999 : 0.985;
-      vn2 *= spinning ? gripStick() : 0.42;
-      state.vx = tx * vt + nx * vn2;
-      state.vy = ty * vt + ny * vn2;
     }
 
-    const spd = Math.hypot(state.vx, state.vy);
-    const cap = maxSpeed();
-    if (spd > cap) {
-      state.vx *= cap / spd;
-      state.vy *= cap / spd;
+    function die() {
+      if (!alive) return;
+      alive = false;
+      glidingNow = false;
+      Kernel.bus.emit("fell", { distance: Math.max(0, Math.floor((x - startX) / 8)) });
     }
 
-    state.x += state.vx * dt;
-    state.y += state.vy * dt;
-    state.spin += (state.vx / R) * dt;
-    if (state.x > state.maxX) state.maxX = state.x;
+    function update(dt) {
+      if (!alive) return;
+      const wasGrounded = grounded;
+      const roof = Buildings.roofY(x);
+      const onRoof = roof != null && y + R >= roof - 2 && y + R <= roof + LAND && vy >= -80;
 
-    if (state.x > state.progressX + 12) {
-      state.progressX = state.x;
-      state.stall = 0;
-    } else if (state.maxX > 250) {
-      if (spd < 50 && !state.rev) state.stall += dt;
-      else if (state.rev) state.stall += dt * 0.22;
-      else state.stall += dt * 0.18;
-      if (state.stall > 4.2) crash("stall");
+      if (onRoof && vy >= -10) {
+        grounded = true;
+        glidingNow = false;
+        y = roof - R;
+        const sl = Buildings.slope(x);
+        vy = 0;
+        vx += GRAVITY * sl * 0.35 * dt;
+        if (intent.roll) {
+          const a = accel() * (intent.roll * vx < 0 ? 2.4 : 1);
+          vx += intent.roll * a * dt;
+        } else if (vx > 0) {
+          vx = Math.max(0, vx - 2400 * dt);
+        } else if (vx < 0) {
+          vx = Math.min(0, vx + 2400 * dt);
+        }
+        const cap = maxVx();
+        if (vx > cap) vx = cap;
+        if (vx < -cap) vx = -cap;
+        meter = Math.min(1, meter + dt * (0.22 + stats().glide * 0.05));
+      } else {
+        grounded = false;
+        charging = false;
+        const wantGlide = intent.jumpHeld && meter > 0.02;
+        if (wantGlide) {
+          const sink = glideSink();
+          if (!glidingNow && vy > sink) vy = sink + (vy - sink) * 0.2;
+          glidingNow = true;
+          vy += glideAccel() * dt;
+          meter = Math.max(0, meter - dt / (1.6 + stats().glide * 0.45));
+        } else {
+          glidingNow = false;
+          vy += GRAVITY * dt;
+          meter = Math.min(1, meter + dt * (0.18 + stats().glide * 0.04));
+        }
+        if (intent.roll) vx += intent.roll * accel() * 0.55 * dt;
+        const cap = maxVx() * 1.15;
+        if (vx > cap) vx = cap;
+        if (vx < -cap) vx = -cap;
+      }
+
+      if (grounded && charging && intent.jumpHeld) {
+        charge = Math.min(1, charge + dt / 0.55);
+      } else if (grounded && !intent.jumpHeld) {
+        charge = 0;
+        charging = false;
+      }
+
+      x += vx * dt;
+      y += vy * dt;
+      spin += vx * dt * 0.045;
+
+      resolveWalls();
+
+      const stillRoof = Buildings.roofY(x);
+      if (stillRoof != null && vy >= -10 && y + R >= stillRoof - 2 && y + R <= stillRoof + LAND) {
+        y = stillRoof - R;
+        vy = 0;
+        grounded = true;
+        glidingNow = false;
+      }
+
+      Buildings.setCam(x - Kernel.view.w * 0.32);
+
+      if (grounded && !wasGrounded) Kernel.bus.emit("landed");
+
+      const bottom = Buildings.screenY(y + R);
+      if (bottom >= Kernel.view.h - 2 || y + R >= Buildings.groundY() - 4) die();
     }
-    if (state.y > heightAt(state.x) + 280) crash("fall");
-    if (state.x < -80) crash("stall");
 
-    setHum(spinning);
-
-    const look = Math.min(240, Math.max(0, state.vx * 0.18));
-    state.camX += (state.x - view.cssW * 0.3 + look - state.camX) * Math.min(1, dt * 5);
-    state.camY += (state.y - view.cssH * 0.58 - state.camY) * Math.min(1, dt * 3.2);
-  }
-
-  let view = { s: 1, cssW: 1, cssH: 1, dpr: 1 };
-  const ui = { hits: [] };
-
-  function layout() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    view.dpr = dpr;
-    view.cssW = w;
-    view.cssH = h;
-    view.s = dpr;
-  }
-
-  function drawBandedSun(cx, cy, radius) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.clip();
-    const h = radius * 2;
-    for (let i = 0; i < BANDS.length; i++) {
-      ctx.fillStyle = BANDS[i];
-      ctx.fillRect(cx - radius - 1, cy - radius + (h * i) / BANDS.length, radius * 2 + 2, h / BANDS.length + 1);
+    function snapshot() {
+      return {
+        x, y, vx, r: R, spin, charge, meter, grounded, charging, alive,
+        gliding: glidingNow,
+        distance: Math.max(0, Math.floor((x - startX) / 8))
+      };
     }
-    ctx.restore();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255,240,180,0.55)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
 
-  function drawGrid(horizon, floor) {
-    const w = view.cssW, h = view.cssH;
-    const vpX = w * 0.5;
-    ctx.save();
-    ctx.beginPath();
-    if (floor) ctx.rect(0, horizon, w, h - horizon);
-    else ctx.rect(0, 0, w, horizon);
-    ctx.clip();
-    ctx.strokeStyle = floor ? "rgba(255,45,200,0.42)" : "rgba(255,45,200,0.22)";
-    ctx.lineWidth = 1;
-    for (let i = -22; i <= 22; i++) {
+    Kernel.bus.on("screen", name => {
+      if (name === "playStub") spawn();
+    });
+
+    function finish() {
+      alive = false;
+    }
+
+    return { update, spawn, setIntent, releaseJump, snapshot, finish, R };
+  })();
+
+  /* ── Controls ───────────────────────────────────────────── */
+  const Controls = (() => {
+    const keys = { left: false, right: false, jump: false };
+
+    function playing() {
+      return Menus.current() === "playStub";
+    }
+
+    function apply() {
+      if (!playing()) {
+        Ball.setIntent({ roll: 0, jumpHeld: false });
+        return;
+      }
+      const roll = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+      Ball.setIntent({ roll, jumpHeld: keys.jump });
+    }
+
+    function onKey(e, down) {
+      if (!playing()) return;
+      const k = e.key;
+      if (k === "ArrowLeft" || k === "a" || k === "A") {
+        e.preventDefault();
+        keys.left = down;
+      } else if (k === "ArrowRight" || k === "d" || k === "D") {
+        e.preventDefault();
+        keys.right = down;
+      } else if (k === " " || k === "Spacebar" || e.code === "Space") {
+        e.preventDefault();
+        if (down && !keys.jump) {
+          keys.jump = true;
+          Ball.setIntent({ jumpHeld: true });
+        }
+        if (!down && keys.jump) {
+          keys.jump = false;
+          Ball.releaseJump();
+        }
+      } else if (down && (k === "r" || k === "R")) {
+        Buildings.load(Menus.selectedMap());
+        Ball.spawn();
+      }
+      apply();
+    }
+
+    function pointer(kind, px, py) {
+      if (!playing()) return;
+      const { w, h } = Kernel.view;
+      if (kind === "up" || kind === "cancel") {
+        keys.left = false;
+        keys.right = false;
+        if (keys.jump) {
+          keys.jump = false;
+          Ball.releaseJump();
+        }
+        apply();
+        return;
+      }
+      keys.left = px < w * 0.28;
+      keys.right = px > w * 0.72;
+      const jumpZone = !keys.left && !keys.right;
+      if (kind === "down") {
+        if (jumpZone) {
+          keys.jump = true;
+          Ball.setIntent({ jumpHeld: true });
+        }
+      } else if (kind === "move") {
+        if (!jumpZone && keys.jump) {
+          keys.jump = false;
+          Ball.releaseJump();
+        }
+      }
+      apply();
+    }
+
+    window.addEventListener("keydown", e => onKey(e, true));
+    window.addEventListener("keyup", e => onKey(e, false));
+
+    function update() { apply(); }
+
+    return { update, pointer };
+  })();
+
+  /* ── Look ───────────────────────────────────────────────── */
+  const Look = (() => {
+    const ctx = Kernel.ctx;
+    const BANDS = ["#fff6a8", "#ffe14a", "#ffb02e", "#ff7a3c", "#ff4da0", "#ff2d88", "#c42cff", "#6b1ad6"];
+    const BALL_R = 22;
+
+    function drawSky(w, h) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#050218");
+      g.addColorStop(0.28, "#140560");
+      g.addColorStop(0.5, "#6b1ad6");
+      g.addColorStop(0.68, "#ff4da0");
+      g.addColorStop(1, "#1a0820");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      const horizon = h * 0.28;
+      ctx.fillStyle = "#cfe9ff";
+      for (let i = 0; i < 48; i++) {
+        const sx = ((i * 97) % w);
+        const sy = (i * 37) % Math.max(40, horizon - 10);
+        ctx.globalAlpha = 0.35 + (i % 5) * 0.12;
+        ctx.fillRect(sx, sy, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
+      }
+      ctx.globalAlpha = 1;
+
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(vpX, horizon);
-      ctx.lineTo(vpX + i * (w / 11), floor ? h + 40 : -40);
-      ctx.stroke();
-    }
-    const rows = floor ? 14 : 8;
-    for (let i = 1; i <= rows; i++) {
-      const t = i / rows;
-      const y = floor ? horizon + (h - horizon) * t * t : horizon * (1 - t * t);
-      ctx.globalAlpha = 0.12 + t * 0.45;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-    ctx.restore();
-    ctx.globalAlpha = 1;
-  }
-
-  function drawCityLayer(horizon, par, scale, colors) {
-    const w = view.cssW;
-    const bW = [42, 28, 56, 34, 48, 22, 70, 36, 30, 50];
-    const bH = [80, 130, 96, 168, 74, 148, 110, 180, 88, 140];
-    let bx = -((par % 64));
-    let k = 0;
-    while (bx < w + 90) {
-      const ww = bW[k % bW.length] * scale;
-      const hh = bH[k % bH.length] * scale;
-      const col = colors[k % colors.length];
-      ctx.fillStyle = col;
-      ctx.fillRect(bx, horizon - hh, ww - 3, hh);
-      ctx.strokeStyle = "rgba(255,80,200,0.35)";
+      ctx.rect(0, 0, w, horizon);
+      ctx.clip();
+      ctx.strokeStyle = "rgba(255,45,200,0.28)";
       ctx.lineWidth = 1;
-      ctx.strokeRect(bx, horizon - hh, ww - 3, hh);
-      if (k % 5 === 2) {
+      for (let i = -18; i <= 18; i++) {
         ctx.beginPath();
-        ctx.moveTo(bx + ww * 0.35, horizon - hh);
-        ctx.lineTo(bx + ww * 0.45, horizon - hh - 16 * scale);
-        ctx.lineTo(bx + ww * 0.55, horizon - hh);
-        ctx.fill();
+        ctx.moveTo(w * 0.5, horizon);
+        ctx.lineTo(w * 0.5 + i * (w / 10), -20);
+        ctx.stroke();
       }
-      ctx.fillStyle = k % 2 ? "rgba(80,230,255,0.55)" : "rgba(255,140,220,0.45)";
-      for (let wy = 10 * scale; wy < hh - 8; wy += 9 * scale) {
-        for (let wx = 5 * scale; wx < ww - 8; wx += 8 * scale) {
-          if ((k + wy + wx) % 4 !== 0) ctx.fillRect(bx + wx, horizon - hh + wy, 2.2 * scale, 3.2 * scale);
-        }
-      }
-      bx += ww + 4 * scale;
-      k++;
-    }
-  }
+      ctx.restore();
 
-  function clipAboveTerrain() {
-    if (pts.length < 4) return;
-    const w = view.cssW;
-    const camX = state.camX, camY = state.camY;
-    const left = camX - 40, right = camX + w + 40;
-    ctx.beginPath();
-    ctx.moveTo(-40, -40);
-    ctx.lineTo(w + 40, -40);
-    for (let x = right; x >= left; x -= 6) {
-      ctx.lineTo(x - camX, heightAt(x) - camY);
-    }
-    ctx.closePath();
-    ctx.clip();
-  }
-
-  function drawSky() {
-    const w = view.cssW, h = view.cssH;
-    const horizon = h * 0.36;
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "#050218");
-    g.addColorStop(0.32, "#1a0670");
-    g.addColorStop(0.5, "#7a1ad0");
-    g.addColorStop(0.62, "#ff4da0");
-    g.addColorStop(1, "#120436");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-
-    const sunX = w * 0.5, sunY = horizon - 20;
-    const sunR = Math.min(148, h * 0.2);
-    const glow = ctx.createRadialGradient(sunX, sunY, 20, sunX, sunY, sunR * 1.6);
-    glow.addColorStop(0, "rgba(255,200,80,0.55)");
-    glow.addColorStop(0.5, "rgba(255,60,160,0.18)");
-    glow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(sunX, sunY, sunR * 1.6, 0, Math.PI * 2);
-    ctx.fill();
-    drawBandedSun(sunX, sunY, sunR);
-
-    ctx.save();
-    clipAboveTerrain();
-
-    ctx.fillStyle = "#cfe9ff";
-    const skyH = Math.max(48, horizon - 8);
-    for (let i = 0; i < 50; i++) {
-      const sx = ((i * 97 + state.camX * 0.02) % w + w) % w;
-      const sy = (i * 37) % skyH;
-      ctx.globalAlpha = 0.35 + (i % 5) * 0.12;
-      ctx.fillRect(sx, sy, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
-    }
-    ctx.globalAlpha = 1;
-    drawGrid(horizon, false);
-
-    drawCityLayer(horizon, state.camX * 0.12, 0.62, ["#3a1868", "#1a3a78", "#4a2078"]);
-    drawCityLayer(horizon, state.camX * 0.28, 1, ["#4b1a86", "#2a4a9a", "#6a2488", "#1c3c80", "#5a1e70"]);
-    ctx.restore();
-  }
-
-  function drawHills() {
-    const w = view.cssW, h = view.cssH;
-    const camX = state.camX, camY = state.camY;
-    const left = camX - 60;
-    const right = camX + w + 60;
-    const step = 6;
-
-    function roadPath(closeDown) {
+      const sunX = w * 0.5, sunY = horizon - 8, sunR = Math.min(110, h * 0.15);
+      const glow = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, sunR * 1.7);
+      glow.addColorStop(0, "rgba(255,200,80,0.55)");
+      glow.addColorStop(0.5, "rgba(255,60,160,0.16)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.moveTo(left - camX, heightAt(left) - camY);
-      for (let x = left + step; x <= right; x += step) {
-        ctx.lineTo(x - camX, heightAt(x) - camY);
-      }
-      if (closeDown) {
-        ctx.lineTo(right - camX, h + 200);
-        ctx.lineTo(left - camX, h + 200);
-        ctx.closePath();
-      }
+      ctx.arc(sunX, sunY, sunR * 1.7, 0, Math.PI * 2);
+      ctx.fill();
+      drawBandedSun(sunX, sunY, sunR);
     }
 
-    roadPath(true);
-    ctx.fillStyle = "#0b0618";
-    ctx.fill();
-
-    ctx.save();
-    roadPath(true);
-    ctx.clip();
-    ctx.strokeStyle = "rgba(255, 50, 200, 0.28)";
-    ctx.lineWidth = 1;
-    const startX = Math.floor(left / 40) * 40;
-    for (let x = startX; x < right; x += 40) {
+    function drawBandedSun(cx, cy, radius) {
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(x - camX, heightAt(x) - camY);
-      ctx.lineTo(x - camX, h + 40);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.clip();
+      const hh = radius * 2;
+      for (let i = 0; i < BANDS.length; i++) {
+        ctx.fillStyle = BANDS[i];
+        ctx.fillRect(cx - radius - 1, cy - radius + (hh * i) / BANDS.length, radius * 2 + 2, hh / BANDS.length + 1);
+      }
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,240,180,0.55)";
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
-    for (let i = 1; i <= 8; i++) {
-      ctx.beginPath();
-      let started = false;
-      for (let x = left; x <= right; x += 16) {
-        const y = heightAt(x) + i * 32;
-        if (!started) { ctx.moveTo(x - camX, y - camY); started = true; }
-        else ctx.lineTo(x - camX, y - camY);
+
+    function drawBall(snap, cam) {
+      const x = snap.x - cam;
+      const y = Buildings.screenY(snap.y);
+      const squash = snap.charge || 0;
+      const sx = 1 + squash * 0.16;
+      const sy = 1 - squash * 0.22;
+      const glow = ctx.createRadialGradient(x, y, 4, x, y, snap.gliding ? 48 : 38);
+      if (snap.gliding) {
+        glow.addColorStop(0, "rgba(120,255,255,0.55)");
+        glow.addColorStop(0.45, "rgba(80,180,255,0.22)");
+        glow.addColorStop(1, "rgba(80,180,255,0)");
+      } else {
+        glow.addColorStop(0, `rgba(255,200,80,${0.4 + squash * 0.35})`);
+        glow.addColorStop(0.5, "rgba(255,60,160,0.18)");
+        glow.addColorStop(1, "rgba(255,60,160,0)");
       }
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.strokeStyle = "#3cf6ff";
-    ctx.shadowColor = "#3cf6ff";
-    ctx.shadowBlur = 16;
-    ctx.lineWidth = 3;
-    roadPath(false);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(255,70,200,0.7)";
-    ctx.lineWidth = 1.25;
-    ctx.stroke();
-  }
-
-  function drawBall() {
-    const R = ballR();
-    const x = state.x - state.camX;
-    const y = state.y - state.camY;
-    const spinning = state.hold || state.rev;
-    const glowR = spinning ? 40 : 32;
-    const glow = ctx.createRadialGradient(x, y, 4, x, y, glowR);
-    glow.addColorStop(0, "rgba(255,200,80,0.5)");
-    glow.addColorStop(0.45, "rgba(255,60,160,0.2)");
-    glow.addColorStop(1, "rgba(255,60,160,0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(x, y, glowR, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.beginPath();
-    ctx.arc(0, 0, R, 0, Math.PI * 2);
-    ctx.clip();
-    const hh = R * 2;
-    for (let i = 0; i < BANDS.length; i++) {
-      ctx.fillStyle = BANDS[i];
-      ctx.fillRect(-R - 1, -R + (hh * i) / BANDS.length, R * 2 + 2, hh / BANDS.length + 1);
-    }
-    const shade = ctx.createRadialGradient(-R * 0.25, -R * 0.3, R * 0.15, 0, 0, R);
-    shade.addColorStop(0, "rgba(255,255,255,0.12)");
-    shade.addColorStop(0.55, "rgba(0,0,0,0)");
-    shade.addColorStop(1, "rgba(40,0,50,0.38)");
-    ctx.fillStyle = shade;
-    ctx.fillRect(-R, -R, R * 2, R * 2);
-
-    ctx.strokeStyle = "rgba(20,0,40,0.28)";
-    ctx.lineWidth = 1.2;
-    for (let i = 0; i < 4; i++) {
-      const yaw = state.spin * 0.85 + i * Math.PI * 0.5;
-      const w = Math.sin(yaw) * R;
-      if (Math.abs(w) < 1.2) continue;
+      ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.ellipse(0, 0, Math.abs(w), R, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    const front = Math.cos(state.spin * 0.85);
-    if (front > 0.05) {
-      const hx = Math.sin(state.spin * 0.85) * R * 0.42;
-      const hy = -R * 0.32;
-      const spec = ctx.createRadialGradient(hx, hy, 0, hx, hy, R * 0.45);
-      spec.addColorStop(0, `rgba(255,255,255,${0.18 + front * 0.28})`);
+      ctx.ellipse(x, y + BALL_R * (1 - sy) * 0.5, 36 * sx, 36 * sy, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(x, y + BALL_R * (1 - sy) * 0.35);
+      ctx.scale(sx, sy);
+      ctx.beginPath();
+      ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+      ctx.clip();
+      const hh = BALL_R * 2;
+      for (let i = 0; i < BANDS.length; i++) {
+        ctx.fillStyle = BANDS[i];
+        ctx.fillRect(-BALL_R - 1, -BALL_R + (hh * i) / BANDS.length, BALL_R * 2 + 2, hh / BANDS.length + 1);
+      }
+      const shade = ctx.createRadialGradient(-BALL_R * 0.35, -BALL_R * 0.4, BALL_R * 0.1, 0, 0, BALL_R);
+      shade.addColorStop(0, "rgba(255,255,255,0.28)");
+      shade.addColorStop(0.35, "rgba(255,255,255,0)");
+      shade.addColorStop(1, "rgba(30,0,50,0.45)");
+      ctx.fillStyle = shade;
+      ctx.fillRect(-BALL_R, -BALL_R, BALL_R * 2, BALL_R * 2);
+      const ang = snap.spin || 0;
+      const hx = Math.sin(ang) * BALL_R * 0.38;
+      const hy = -BALL_R * 0.28;
+      const depth = 0.45 + 0.55 * Math.max(0, Math.cos(ang));
+      const spec = ctx.createRadialGradient(hx, hy, 0, hx, hy, BALL_R * 0.55);
+      spec.addColorStop(0, `rgba(255,255,240,${0.12 + depth * 0.4})`);
+      spec.addColorStop(0.4, "rgba(255,200,120,0.08)");
       spec.addColorStop(1, "rgba(255,255,255,0)");
       ctx.fillStyle = spec;
       ctx.beginPath();
-      ctx.arc(hx, hy, R * 0.45, 0, Math.PI * 2);
+      ctx.arc(hx, hy, BALL_R * 0.55, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.ellipse(x, y + BALL_R * (1 - sy) * 0.35, BALL_R * sx, BALL_R * sy, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,245,200,0.85)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     }
-    ctx.restore();
 
-    ctx.beginPath();
-    ctx.arc(x, y, R, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255,245,200,0.85)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
+    function drawBuilding(b, cam) {
+      const sx = b.x - cam;
+      const hue = b.hue || 250;
+      const eave = Buildings.eaveY(b);
+      const top = Buildings.screenY(eave);
+      ctx.fillStyle = `hsl(${hue} 38% 38%)`;
+      ctx.fillRect(sx, top, b.w, b.h);
+      const shade = ctx.createLinearGradient(sx, top, sx + b.w, top);
+      shade.addColorStop(0, "rgba(255,120,220,0.12)");
+      shade.addColorStop(0.5, "rgba(0,0,0,0)");
+      shade.addColorStop(1, "rgba(20,40,90,0.28)");
+      ctx.fillStyle = shade;
+      ctx.fillRect(sx, top, b.w, b.h);
+      ctx.strokeStyle = `hsl(${hue} 70% 68%)`;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(sx, top, b.w, b.h);
 
-  function btn(id, x, y, w, h, label, sub, hot) {
-    ui.hits.push({ id, x, y, w, h });
-    ctx.fillStyle = hot ? "rgba(255,200,80,0.2)" : "rgba(40,20,80,0.55)";
-    ctx.strokeStyle = hot ? "#ffd24a" : "rgba(180,140,255,0.5)";
-    ctx.lineWidth = 1.5;
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeRect(x, y, w, h);
-    ctx.fillStyle = "#fff4d2";
-    ctx.font = "700 15px ui-sans-serif, system-ui, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, y + 24);
-    ctx.fillStyle = "rgba(200,230,255,0.75)";
-    ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
-    ctx.fillText(sub, x + 14, y + 42);
-  }
+      const cols = Math.max(2, Math.floor(b.w / 28));
+      const rows = Math.max(2, Math.floor(b.h / 36));
+      const padX = 10, padY = 12;
+      const cw = (b.w - padX * 2) / cols;
+      const ch = (b.h - padY * 2 - 8) / rows;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const on = (r + c + (b.x | 0)) % 5 !== 0;
+          ctx.fillStyle = on ? "rgba(180,230,255,0.9)" : "rgba(40,20,70,0.55)";
+          ctx.fillRect(sx + padX + c * cw + 4, top + padY + r * ch + 4, Math.max(6, cw - 8), Math.max(8, ch - 8));
+        }
+      }
 
-  function drawHud() {
-    const w = view.cssW, h = view.cssH;
-    ui.hits.length = 0;
-    ctx.setTransform(view.s, 0, 0, view.s, 0, 0);
-    ctx.font = "700 22px ui-sans-serif, system-ui, sans-serif";
-    ctx.fillStyle = "#d6f7ff";
-    ctx.fillText(`${state.mode === "play" ? meters() : state.runMeters} m`, 18, 34);
-    ctx.font = "14px ui-sans-serif, system-ui, sans-serif";
-    ctx.fillStyle = "rgba(214,247,255,0.6)";
-    ctx.fillText(`BEST  ${up.best} m`, 18, 54);
-    ctx.fillText(`TICKETS  ${up.tickets}`, 18, 74);
-
-    if (state.mode === "play") {
-      const padY = h - 54;
-      ctx.globalAlpha = state.rev ? 1 : 0.4;
-      ctx.fillStyle = "rgba(80,230,255,0.18)";
-      ctx.fillRect(16, padY, 110, 38);
+      const poly = Buildings.roofPoly(b);
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
+      for (let p = 1; p < poly.length; p++) ctx.lineTo(poly[p][0] - cam, Buildings.screenY(poly[p][1]));
+      ctx.closePath();
+      ctx.fillStyle = `hsl(${hue} 45% 28%)`;
+      ctx.fill();
       ctx.strokeStyle = "#3cf6ff";
-      ctx.strokeRect(16, padY, 110, 38);
-      ctx.fillStyle = "#3cf6ff";
-      ctx.font = "700 14px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText("REV", 52, padY + 25);
-      ctx.globalAlpha = state.hold ? 1 : 0.4;
-      ctx.fillStyle = "rgba(255,200,70,0.18)";
-      ctx.fillRect(w - 126, padY, 110, 38);
-      ctx.strokeStyle = "#ffd24a";
-      ctx.strokeRect(w - 126, padY, 110, 38);
-      ctx.fillStyle = "#ffd24a";
-      ctx.fillText("SPIN", w - 90, padY + 25);
-      ctx.globalAlpha = 1;
-      if (state.stall > 1.1 && state.maxX > 250) {
-        const t = Math.min(1, (state.stall - 1.1) / 3.1);
-        ctx.textAlign = "center";
-        ctx.fillStyle = `rgba(255,210,80,${0.55 + t * 0.45})`;
-        ctx.font = "700 15px ui-sans-serif, system-ui, sans-serif";
-        ctx.fillText("STALLING  —  reverse or you'll stop", w / 2, 92);
-        ctx.fillStyle = "rgba(0,0,0,0.45)";
-        ctx.fillRect(w / 2 - 90, 104, 180, 8);
-        ctx.fillStyle = "#ffd24a";
-        ctx.fillRect(w / 2 - 90, 104, 180 * t, 8);
-        ctx.textAlign = "left";
+      ctx.shadowColor = "#3cf6ff";
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
+      for (let p = 1; p < poly.length; p++) ctx.lineTo(poly[p][0] - cam, Buildings.screenY(poly[p][1]));
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    function drawHud(snap) {
+      const p = Progression.snapshot();
+      ctx.font = "700 20px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = "#d6f7ff";
+      ctx.fillText(`${snap.distance} m`, 16, 78);
+      ctx.font = "13px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = "rgba(214,247,255,0.65)";
+      ctx.fillText(`BEST  ${p.best}     TICKETS  ${p.tickets}`, 16, 98);
+      const gx = 16, gy = 112, gw = 120, gh = 7;
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.fillRect(gx, gy, gw, gh);
+      ctx.fillStyle = snap.gliding ? "#9cffff" : snap.meter > 0.25 ? "#5cf0ff" : "#ffd24a";
+      ctx.fillRect(gx, gy, gw * snap.meter, gh);
+      ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = snap.gliding ? "#7af6ff" : "rgba(214,247,255,0.55)";
+      ctx.fillText("GLIDE", gx + gw + 8, gy + 8);
+    }
+
+    function drawPlay() {
+      const { w, h } = Kernel.view;
+      const cam = Buildings.camX();
+      const snap = Ball.snapshot();
+      drawSky(w, h);
+      ctx.fillStyle = "#0a0614";
+      ctx.fillRect(0, Buildings.screenY(Buildings.groundY()), w, h);
+
+      const list = Buildings.buildings();
+      for (let i = 0; i < list.length; i++) {
+        const b = list[i];
+        if (b.x + b.w < cam - 30 || b.x > cam + w + 30) continue;
+        drawBuilding(b, cam);
+      }
+
+      drawBall(snap, cam);
+      Goal.draw();
+      drawHud(snap);
+    }
+
+    return { drawPlay, drawBall, drawBandedSun };
+  })();
+
+  /* ── Goal ───────────────────────────────────────────────── */
+  const Goal = (() => {
+    const ctx = Kernel.ctx;
+    const BANDS = ["#fff6a8", "#ffe14a", "#ffb02e", "#ff7a3c", "#ff4da0", "#ff2d88", "#c42cff", "#6b1ad6"];
+    let claimed = false;
+
+    function reset() { claimed = false; }
+
+    function disc() {
+      const g = Buildings.gate();
+      return { x: g.x, y: g.y - 52, r: 32 };
+    }
+
+    function update() {
+      if (claimed || Menus.current() !== "playStub") return;
+      const s = Ball.snapshot();
+      if (!s.alive) return;
+      const d = disc();
+      if (Math.hypot(s.x - d.x, s.y - d.y) < d.r + s.r * 0.35) {
+        claimed = true;
+        Ball.finish();
+        Kernel.bus.emit("finished", { distance: s.distance });
       }
     }
 
-    if (state.mode === "title" || state.mode === "dead") {
-      ctx.fillStyle = "rgba(6,2,20,0.45)";
+    function draw() {
+      const cam = Buildings.camX();
+      const g = Buildings.gate();
+      const d = disc();
+      const x = d.x - cam;
+      const y = Buildings.screenY(d.y);
+      const roof = Buildings.screenY(g.y);
+      ctx.fillStyle = "#2a1458";
+      ctx.strokeStyle = "#ffd24a";
+      ctx.lineWidth = 3;
+      ctx.fillRect(x - 40, y, 10, roof - y);
+      ctx.fillRect(x + 30, y, 10, roof - y);
+      ctx.strokeRect(x - 40, y, 10, roof - y);
+      ctx.strokeRect(x + 30, y, 10, roof - y);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, d.r, 0, Math.PI * 2);
+      ctx.clip();
+      const hh = d.r * 2;
+      for (let i = 0; i < BANDS.length; i++) {
+        ctx.fillStyle = BANDS[i];
+        ctx.fillRect(x - d.r - 1, y - d.r + (hh * i) / BANDS.length, d.r * 2 + 2, hh / BANDS.length + 1);
+      }
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(x, y, d.r, 0, Math.PI * 2);
+      ctx.strokeStyle = claimed ? "#5cf0ff" : "rgba(255,240,180,0.9)";
+      ctx.shadowColor = "#ffd24a";
+      ctx.shadowBlur = 16;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    Kernel.bus.on("screen", name => {
+      if (name === "playStub") reset();
+    });
+
+    return { update, draw, reset };
+  })();
+
+  /* ── Audio ──────────────────────────────────────────────── */
+  const AudioFx = (() => {
+    let ctx = null;
+    let music = null;
+    let glideHum = null;
+
+    function ensure() {
+      if (Kernel.isMute()) return null;
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
+      startMusic();
+      return ctx;
+    }
+
+    function beep(freq, dur, type, vol, slide) {
+      const ac = ensure();
+      if (!ac) return;
+      const t = ac.currentTime;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+      g.gain.setValueAtTime(vol == null ? 0.07 : vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g);
+      g.connect(ac.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    }
+
+    function noiseBuf(ac) {
+      const n = ac.sampleRate * 0.2;
+      const buf = ac.createBuffer(1, n, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      return buf;
+    }
+
+    function startMusic() {
+      if (music || !ctx || Kernel.isMute()) return;
+      const master = ctx.createGain();
+      master.gain.value = 0.06;
+      master.connect(ctx.destination);
+      const nb = noiseBuf(ctx);
+      let step = 0;
+      const interval = 60 / 104 / 2;
+      const bass = [82.41, 82.41, 110, 110, 98, 98, 73.42, 73.42];
+      const arp = [329.63, 392, 493.88, 587.33, 493.88, 392, 329.63, 261.63];
+      function blip(freq, dur, type, vol, t) {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type;
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g);
+        g.connect(master);
+        o.start(t);
+        o.stop(t + dur + 0.02);
+      }
+      function drum(kind, t) {
+        if (kind === "k") {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.frequency.setValueAtTime(90, t);
+          o.frequency.exponentialRampToValueAtTime(38, t + 0.12);
+          g.gain.setValueAtTime(0.85, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+          o.connect(g);
+          g.connect(master);
+          o.start(t);
+          o.stop(t + 0.16);
+        } else {
+          const src = ctx.createBufferSource();
+          const g = ctx.createGain();
+          const f = ctx.createBiquadFilter();
+          src.buffer = nb;
+          f.type = "highpass";
+          f.frequency.value = kind === "s" ? 1800 : 8000;
+          g.gain.setValueAtTime(kind === "s" ? 0.2 : 0.06, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + (kind === "s" ? 0.12 : 0.04));
+          src.connect(f);
+          f.connect(g);
+          g.connect(master);
+          src.start(t);
+          src.stop(t + 0.15);
+        }
+      }
+      const id = setInterval(() => {
+        if (Kernel.isMute() || !ctx) return;
+        const t = ctx.currentTime + 0.03;
+        const s = step % 8;
+        if (s === 0 || s === 4) drum("k", t);
+        if (s === 2 || s === 6) drum("s", t);
+        drum("h", t);
+        blip(bass[s], 0.28, "sawtooth", 0.2, t);
+        blip(arp[s] * 2, 0.09, "square", 0.04, t);
+        step++;
+      }, interval * 1000);
+      music = {
+        stop() {
+          clearInterval(id);
+          try { master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15); } catch (e) {}
+          music = null;
+        }
+      };
+    }
+
+    Kernel.bus.on("mute", on => {
+      if (on && music) music.stop();
+      else if (!on) ensure();
+    });
+    Kernel.bus.on("jumped", () => beep(420, 0.1, "sine", 0.06, 280));
+    Kernel.bus.on("landed", () => beep(180, 0.08, "triangle", 0.05, -40));
+    Kernel.bus.on("fell", () => beep(90, 0.28, "square", 0.07, -50));
+    Kernel.bus.on("finished", () => {
+      beep(520, 0.12, "sine", 0.07);
+      beep(780, 0.18, "triangle", 0.05);
+    });
+
+    return { ensure, beep };
+  })();
+
+  /* ── Menus ──────────────────────────────────────────────── */
+  const Menus = (() => {
+    const ctx = Kernel.ctx;
+    const BANDS = ["#fff6a8", "#ffe14a", "#ffb02e", "#ff7a3c", "#ff4da0", "#ff2d88", "#c42cff", "#6b1ad6"];
+
+    let screen = "main";
+    let pickedMap = "blocks";
+    let hits = [];
+    let lastPointer = null;
+    let lastRun = { distance: 0, earned: 0, finished: false };
+
+    function go(name) {
+      screen = name;
+      Kernel.bus.emit("screen", name);
+    }
+
+    function current() { return screen; }
+    function selectedMap() { return pickedMap; }
+
+    function addHit(id, x, y, w, h) {
+      hits.push({ id, x, y, w, h });
+    }
+
+    function hitAt(px, py) {
+      for (let i = hits.length - 1; i >= 0; i--) {
+        const b = hits[i];
+        if (px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h) return b.id;
+      }
+      return null;
+    }
+
+    function drawBackdrop() {
+      const { w, h } = Kernel.view;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#050218");
+      g.addColorStop(0.4, "#1a0670");
+      g.addColorStop(0.7, "#7a1ad0");
+      g.addColorStop(1, "#120436");
+      ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
+
+      const sunX = w * 0.5, sunY = h * 0.22, sunR = Math.min(120, h * 0.16);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+      ctx.clip();
+      const bh = sunR * 2;
+      for (let i = 0; i < BANDS.length; i++) {
+        ctx.fillStyle = BANDS[i];
+        ctx.fillRect(sunX - sunR - 1, sunY - sunR + (bh * i) / BANDS.length, sunR * 2 + 2, bh / BANDS.length + 1);
+      }
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,240,180,0.5)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      const horizon = h * 0.42;
+      ctx.strokeStyle = "rgba(255,45,200,0.28)";
+      ctx.lineWidth = 1;
+      for (let i = -16; i <= 16; i++) {
+        ctx.beginPath();
+        ctx.moveTo(w * 0.5, horizon);
+        ctx.lineTo(w * 0.5 + i * (w / 10), 0);
+        ctx.stroke();
+      }
+    }
+
+    function panel(x, y, w, h) {
+      ctx.fillStyle = "rgba(12, 6, 32, 0.72)";
+      ctx.strokeStyle = "rgba(180,140,255,0.45)";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
+    }
+
+    function button(id, x, y, w, h, label, sub, hot) {
+      addHit(id, x, y, w, h);
+      ctx.fillStyle = hot ? "rgba(255,200,80,0.22)" : "rgba(40,20,80,0.55)";
+      ctx.strokeStyle = hot ? "#ffd24a" : "rgba(180,140,255,0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = "#fff4d2";
+      ctx.font = "700 16px ui-sans-serif, system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(label, x + 16, y + 26);
+      if (sub) {
+        ctx.fillStyle = "rgba(200,230,255,0.75)";
+        ctx.font = "13px ui-sans-serif, system-ui, sans-serif";
+        ctx.fillText(sub, x + 16, y + 46);
+      }
+    }
+
+    function title(text, y) {
+      const { w } = Kernel.view;
       ctx.textAlign = "center";
       ctx.fillStyle = "#fff4d2";
-      ctx.font = "800 40px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText("SLOPEYBALLS", w / 2, 56);
+      ctx.font = "800 42px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText(text, w / 2, y);
+      ctx.textAlign = "left";
+    }
+
+    function subtitle(text, y) {
+      const { w } = Kernel.view;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(200,230,255,0.9)";
       ctx.font = "15px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillStyle = "rgba(200,230,255,0.92)";
-      if (state.mode === "title") {
-        ctx.fillText("Right: spin. Left: reverse. Spend tickets between runs.", w / 2, 86);
-        ctx.fillText("Tap to ride", w / 2, 110);
-        ctx.textAlign = "left";
-      } else {
-        ctx.fillText(`Run over. ${state.runMeters} m earned ${Math.max(1, Math.floor(state.runMeters / 8))} tickets.`, w / 2, 84);
-        ctx.fillText("Tickets buy a stronger ball. Then ride again.", w / 2, 106);
-        ctx.textAlign = "left";
-        const bw = Math.min(420, w - 40);
-        const bx = (w - bw) / 2;
-        let by = 148;
-        btn("spin", bx, by, bw, 52, `SPIN  Lv ${up.spin}`, `More torque on the climbs.  ${cost(up.spin)} tickets`, false);
-        by += 60;
-        btn("grip", bx, by, bw, 52, `GRIP  Lv ${up.grip}`, `Stick to the slope.  ${cost(up.grip)} tickets`, false);
-        by += 60;
-        btn("mass", bx, by, bw, 52, `MASS  Lv ${up.mass}`, `Heavier. Better downhill.  ${cost(up.mass)} tickets`, false);
-        by += 70;
-        btn("ride", bx, by, bw, 52, "RIDE AGAIN", "Keep your ball. New hills.", true);
+      ctx.fillText(text, w / 2, y);
+      ctx.textAlign = "left";
+    }
+
+    function drawMain() {
+      const { w, h } = Kernel.view;
+      title("SLOPEYBALLS", 64);
+      subtitle("Rooftop platformer", 96);
+      const bw = Math.min(420, w - 40);
+      const bx = (w - bw) / 2;
+      let by = Math.max(h * 0.48, 220);
+      button("play", bx, by, bw, 56, "Play", "Choose a map", true);
+      by += 66;
+      button("mute", bx, by, bw, 56, Kernel.isMute() ? "Sound: Off" : "Sound: On", "Toggle mute", false);
+      by += 66;
+      button("reset", bx, by, bw, 56, "Reset progress", "Erases upgrades and tickets", false);
+    }
+
+    function drawMaps() {
+      const { w, h } = Kernel.view;
+      title("SELECT MAP", 64);
+      subtitle("No unlocks. Pick and go.", 96);
+      const bw = Math.min(420, w - 40);
+      const bx = (w - bw) / 2;
+      let by = Math.max(h * 0.42, 180);
+      for (const map of Buildings.listMaps()) {
+        button("map:" + map.id, bx, by, bw, 56, map.name, map.blurb, map.id === pickedMap);
+        by += 66;
       }
+      button("back", bx, by + 8, bw, 56, "Back", "", false);
     }
-  }
 
-  function draw() {
-    ctx.setTransform(view.s, 0, 0, view.s, 0, 0);
-    ctx.translate(state.shake * (Math.random() * 2 - 1), state.shake * (Math.random() * 2 - 1));
-    drawSky();
-    if (pts.length > 2) drawHills();
-    for (const p of state.dust) {
-      ctx.globalAlpha = Math.max(0, p.life * 2);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x - state.camX, p.y - state.camY, p.r, 0, Math.PI * 2);
-      ctx.fill();
+    function drawResetConfirm() {
+      const { w, h } = Kernel.view;
+      title("RESET ALL?", 64);
+      subtitle("This wipes JUMP, GLIDE, SPEED, tickets, and bests.", 100);
+      const bw = Math.min(420, w - 40);
+      const bx = (w - bw) / 2;
+      const by = h * 0.5;
+      button("erase", bx, by, bw, 56, "Erase everything", "Cannot be undone", false);
+      button("cancel", bx, by + 66, bw, 56, "Cancel", "", true);
     }
-    ctx.globalAlpha = 1;
-    if (state.mode !== "title") drawBall();
-    if (state.flash > 0) {
-      ctx.fillStyle = `rgba(255,200,120,${state.flash * 0.35})`;
-      ctx.fillRect(0, 0, view.cssW, view.cssH);
+
+    function drawPlayChrome() {
+      const { w, h } = Kernel.view;
+      const map = Buildings.getMap(pickedMap);
+      ctx.fillStyle = "rgba(6,2,20,0.45)";
+      ctx.fillRect(120, 12, 400, 44);
+      ctx.fillStyle = "#fff4d2";
+      ctx.font = "700 16px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText((map && map.name) || "MAP", 136, 30);
+      ctx.fillStyle = "rgba(200,230,255,0.75)";
+      ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText("← → roll  ·  hold jump to charge  ·  hold in air to glide", 136, 48);
+      button("pause", 16, 16, 100, 40, "Pause", "", false);
     }
-    drawHud();
-  }
 
-  let last = performance.now();
-  function frame(now) {
-    const dt = Math.min(0.033, (now - last) / 1000);
-    last = now;
-    update(dt);
-    draw();
-    requestAnimationFrame(frame);
-  }
-
-  function screenPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top, t: (e.clientX - rect.left) / Math.max(1, rect.width) };
-  }
-
-  function aimFromEvent(e) {
-    const t = screenPos(e).t;
-    state.rev = t < 0.3;
-    state.hold = !state.rev;
-  }
-
-  function down(e) {
-    ensureAudio();
-    const p = e ? screenPos(e) : null;
-    if (state.mode === "title") {
-      resetRun();
-      beep(520, 0.08, "sine", 0.05);
-      if (e) aimFromEvent(e);
-      else state.hold = true;
-      return;
+    function drawPause() {
+      const { w, h } = Kernel.view;
+      ctx.fillStyle = "rgba(6,2,20,0.55)";
+      ctx.fillRect(0, 0, w, h);
+      title("PAUSED", 64);
+      const bw = Math.min(420, w - 40);
+      const bx = (w - bw) / 2;
+      let by = h * 0.4;
+      button("resume", bx, by, bw, 56, "Resume", "", true);
+      by += 66;
+      button("restart", bx, by, bw, 56, "Restart map", "Keep upgrades", false);
+      by += 66;
+      button("menu", bx, by, bw, 56, "Main menu", "", false);
     }
-    if (state.mode === "dead") {
-      if (p) {
-        const hit = ui.hits.find(b => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h);
-        if (hit && hit.id === "ride") {
-          resetRun();
-          beep(520, 0.08, "sine", 0.05);
-        } else if (hit && (hit.id === "spin" || hit.id === "grip" || hit.id === "mass")) {
-          tryBuy(hit.id);
+
+    function drawUpgrade() {
+      const { w, h } = Kernel.view;
+      const p = Progression.snapshot();
+      title(lastRun.finished ? "SUN GATE" : "FELL", 56);
+      subtitle(
+        `${lastRun.distance} m   ·   +${lastRun.earned} tickets   ·   Best ${p.best}`,
+        86
+      );
+      const bw = Math.min(440, w - 40);
+      const bx = (w - bw) / 2;
+      let by = 120;
+      const rows = [
+        ["jump", "JUMP", "Charge higher on the roof"],
+        ["glide", "GLIDE", "Hold jump in air to hang"],
+        ["speed", "SPEED", "Roll harder left and right"]
+      ];
+      for (const [id, label, blurb] of rows) {
+        const lv = p[id];
+        const maxed = lv >= p.cap;
+        const c = p.nextCost[id];
+        const sub = maxed ? `${blurb}.  MAX` : `${blurb}.  Lv ${lv} → ${c} tickets`;
+        button("buy:" + id, bx, by, bw, 56, `${label}  Lv ${lv}`, sub, false);
+        by += 64;
+      }
+      button("restart", bx, by + 8, bw, 56, "Restart map", "Keep these upgrades", true);
+      button("menu", bx, by + 74, bw, 56, "Main menu", "", false);
+    }
+
+    function draw() {
+      hits = [];
+      ctx.setTransform(Kernel.view.s, 0, 0, Kernel.view.s, 0, 0);
+      const inWorld = screen === "playStub" || screen === "pause";
+      if (inWorld) {
+        Look.drawPlay();
+        if (screen === "playStub") drawPlayChrome();
+        else {
+          drawPlayChrome();
+          hits = [];
+          drawPause();
         }
-      } else {
-        resetRun();
-        beep(520, 0.08, "sine", 0.05);
+        return;
       }
-      return;
+      drawBackdrop();
+      if (screen === "main") drawMain();
+      else if (screen === "maps") drawMaps();
+      else if (screen === "resetConfirm") drawResetConfirm();
+      else if (screen === "upgrade") drawUpgrade();
     }
-    if (e) aimFromEvent(e);
-    else state.hold = true;
-  }
-  function release() { state.hold = false; state.rev = false; }
 
-  canvas.addEventListener("pointerdown", e => { e.preventDefault(); canvas.setPointerCapture(e.pointerId); down(e); });
-  canvas.addEventListener("pointermove", e => { if (e.buttons && state.mode === "play") aimFromEvent(e); });
-  canvas.addEventListener("pointerup", e => { e.preventDefault(); release(); });
-  canvas.addEventListener("pointercancel", release);
-  window.addEventListener("keydown", e => {
-    if (e.code === "Space" || e.key === "ArrowRight" || e.key === "ArrowUp") {
-      e.preventDefault();
-      state.rev = false;
-      down();
+    function onPointer(kind, cx, cy) {
+      lastPointer = { kind, x: cx, y: cy };
+      if (kind !== "down") return;
+      const id = hitAt(cx, cy);
+      if (!id) return;
+      if (id === "play") go("maps");
+      else if (id === "mute") Kernel.setMute(!Kernel.isMute());
+      else if (id === "reset") go("resetConfirm");
+      else if (id === "back" || id === "cancel") go("main");
+      else if (id === "erase") {
+        Progression.resetAll();
+        go("main");
+      } else if (id.startsWith("map:")) {
+        pickedMap = id.slice(4);
+        Buildings.load(pickedMap);
+        go("playStub");
+      } else if (id === "pause") go("pause");
+      else if (id === "resume") go("playStub");
+      else if (id === "restart") {
+        Buildings.load(pickedMap);
+        Ball.spawn();
+        go("playStub");
+      }
+      else if (id === "menu") go("main");
+      else if (id.startsWith("buy:")) Progression.buy(id.slice(4));
     }
-    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A" || e.key === "ArrowDown") {
-      e.preventDefault();
-      ensureAudio();
-      if (state.mode === "title") resetRun();
-      if (state.mode === "dead") return;
-      state.hold = false;
-      state.rev = true;
-    }
-    if ((e.key === "r" || e.key === "R") && state.mode !== "title") resetRun();
-    if (e.key === "m" || e.key === "M") {
-      state.mute = !state.mute;
-      if (state.mute) {
-        setHum(false);
-        if (music) music.stop();
-      } else if (audioCtx) startMusic();
-    }
-  });
-  window.addEventListener("keyup", e => {
-    if (e.code === "Space" || e.key === "ArrowRight" || e.key === "ArrowUp") state.hold = false;
-    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A" || e.key === "ArrowDown") state.rev = false;
-  });
-  document.addEventListener("visibilitychange", () => {
-    state.hidden = document.hidden;
-    if (document.hidden) {
-      state.hold = false;
-      state.rev = false;
-      setHum(false);
-    } else last = performance.now();
-  });
 
-  window.addEventListener("resize", layout);
-  buildStart(1);
-  layout();
-  state.camY = heightAt(90) - view.cssH * 0.58;
-  state.horizonY = heightAt(90) - state.camY;
-  requestAnimationFrame(frame);
+    function onKey(e) {
+      if (e.key === "Escape" || e.key === "p" || e.key === "P") {
+        if (screen === "playStub") go("pause");
+        else if (screen === "pause") go("playStub");
+        else if (screen === "maps" || screen === "resetConfirm" || screen === "upgrade") go("main");
+      }
+    }
+
+    function pointerFromEvent(e) {
+      const rect = Kernel.canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    Kernel.canvas.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      AudioFx.ensure();
+      Kernel.canvas.setPointerCapture(e.pointerId);
+      const p = pointerFromEvent(e);
+      onPointer("down", p.x, p.y);
+      if (screen === "playStub" && !hitAt(p.x, p.y)) Controls.pointer("down", p.x, p.y);
+    });
+    Kernel.canvas.addEventListener("pointermove", e => {
+      if (!e.buttons || screen !== "playStub") return;
+      const p = pointerFromEvent(e);
+      if (!hitAt(p.x, p.y)) Controls.pointer("move", p.x, p.y);
+    });
+    Kernel.canvas.addEventListener("pointerup", e => {
+      if (screen === "playStub") Controls.pointer("up");
+    });
+    window.addEventListener("keydown", onKey);
+
+    function endRun(payload, finished) {
+      lastRun = Progression.recordRun({ distance: payload && payload.distance, finished });
+      go("upgrade");
+    }
+    Kernel.bus.on("fell", p => endRun(p, false));
+    Kernel.bus.on("finished", p => endRun(p, true));
+
+    return { draw, go, current, selectedMap, onPointer };
+  })();
+
+  /* ── Shell ──────────────────────────────────────────────── */
+  const Shell = (() => {
+    let last = performance.now();
+
+    function frame(now) {
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
+      Controls.update(dt);
+      const screen = Menus.current();
+      if (screen === "playStub") {
+        Ball.update(dt);
+        Goal.update(dt);
+      }
+      Menus.draw();
+      requestAnimationFrame(frame);
+    }
+
+    function start() {
+      requestAnimationFrame(frame);
+    }
+
+    return { start };
+  })();
+
+  Shell.start();
 })();
 </script>
 </body>

@@ -1,11 +1,11 @@
 # Slopeyballs
 
-Hold to spin. Reverse to get a run-up. Spend tickets between runs.
+Rooftop platformer. Charge a jump. Glide. Pick a map.
 
 ## Play locally
 
 Double-click `index.html`, or refresh if it is already open.
 
-Right side / space = spin. Left side / left arrow = reverse. After a stall, tap SPIN / GRIP / MASS to upgrade, then RIDE AGAIN.
+Play → Blocks. Hold ← → / A D to roll. Hold space to charge a jump; release to pop. Hold jump in the air to glide. Reach the striped sun gate at the end, or fall for tickets. Buy JUMP / GLIDE / SPEED, then ride again. `R` restarts the map. `M` mutes.
 
-`R` restarts. `M` mutes (sound + music).
+`Esc` / `P` pauses or goes back.
