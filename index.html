@@ -156,15 +156,15 @@
       { w: 150, h: 145, roof: "flat", gap: 64, hue: 270 },
       { w: 160, h: 220, roof: "ramp-right", peak: 52, gap: 96, hue: 220 },
       { w: 170, h: 240, roof: "flat", gap: 156, hue: 290 },
-      { w: 130, h: 95, roof: "flat", gap: 44, hue: 240 },
-      { w: 110, h: 85, roof: "flat", gap: 44, hue: 260 },
-      { w: 190, h: 270, roof: "peak", peak: 46, gap: 92, hue: 210 },
+      { w: 130, h: 110, roof: "flat", gap: 44, hue: 240 },
+      { w: 130, h: 125, roof: "flat", gap: 56, hue: 260 },
+      { w: 190, h: 220, roof: "peak", peak: 36, gap: 92, hue: 210 },
       { w: 120, h: 255, roof: "flat", gap: 198, hue: 280 },
       { w: 160, h: 165, roof: "ramp-left", peak: 38, gap: 86, hue: 230 },
-      { w: 100, h: 80, roof: "flat", gap: 38, hue: 300 },
-      { w: 100, h: 72, roof: "flat", gap: 38, hue: 245 },
-      { w: 150, h: 68, roof: "flat", gap: 148, hue: 255 },
-      { w: 200, h: 250, roof: "ramp-right", peak: 88, gap: 70, hue: 265 },
+      { w: 110, h: 100, roof: "flat", gap: 38, hue: 300 },
+      { w: 110, h: 115, roof: "flat", gap: 42, hue: 245 },
+      { w: 150, h: 130, roof: "flat", gap: 120, hue: 255 },
+      { w: 200, h: 235, roof: "ramp-right", peak: 70, gap: 70, hue: 265 },
       { w: 150, h: 340, roof: "flat", gap: 64, hue: 215 },
       { w: 140, h: 385, roof: "flat", gap: 60, hue: 275 },
       { w: 220, h: 460, roof: "peak", peak: 48, gap: 104, hue: 285 },
@@ -291,35 +291,33 @@
     const LAND = 22;
     let x = 80, y = 200, vx = 0, vy = 0;
     let spin = 0, grounded = false, charging = false, charge = 0;
-    let meter = 1, startX = 80, alive = true, glidingNow = false;
+    let meter = 1, startX = 80, alive = true, glidingNow = false, glideLocked = false;
 
     function stats() { return Progression.snapshot(); }
 
     function accel() {
       const s = stats().speed;
-      return 1680 + s * 260;
+      return 1520 + s * 400;
     }
     function maxVx() {
-      return 200 + stats().speed * 44;
+      return 185 + stats().speed * 75;
+    }
+    function airSteer() {
+      return accel() * (0.38 + stats().speed * 0.08);
     }
     function jumpSpeed() {
-      return 470 + stats().jump * 145;
+      return 630 + stats().jump * 72;
     }
-    function glideAccel() {
-      const g = stats().glide;
-      if (g >= 5) return -260;
-      if (g >= 4) return -90;
-      if (g >= 3) return 28;
-      if (g >= 2) return GRAVITY * 0.10;
-      return GRAVITY * 0.18;
+    function riseBleed() {
+      return 0.64;
     }
-    function glideSink() {
+    function boostTerm() {
       const g = stats().glide;
-      if (g >= 5) return -90;
-      if (g >= 4) return 16;
-      if (g >= 3) return 80;
-      if (g >= 2) return 170;
-      return 250;
+      if (g >= 5) return -200;
+      if (g >= 4) return -120;
+      if (g >= 3) return -65;
+      if (g >= 2) return 55;
+      return 210;
     }
 
     function spawn() {
@@ -335,6 +333,7 @@
       meter = 1;
       grounded = true;
       glidingNow = false;
+      glideLocked = false;
       startX = x;
       alive = true;
     }
@@ -388,6 +387,7 @@
       if (!alive) return;
       alive = false;
       glidingNow = false;
+      glideLocked = false;
       Kernel.bus.emit("fell", { distance: Math.max(0, Math.floor((x - startX) / 8)) });
     }
 
@@ -400,6 +400,8 @@
       if (onRoof && vy >= -10) {
         grounded = true;
         glidingNow = false;
+        glideLocked = false;
+        if (intent.jumpHeld) charging = true;
         y = roof - R;
         const sl = Buildings.slope(x);
         vy = 0;
@@ -418,20 +420,31 @@
         meter = Math.min(1, meter + dt * (0.22 + stats().glide * 0.05));
       } else {
         grounded = false;
-        charging = false;
-        const wantGlide = intent.jumpHeld && meter > 0.02;
+        if (!intent.jumpHeld) glideLocked = false;
+        const wantGlide = intent.jumpHeld && meter > 0 && !glideLocked;
         if (wantGlide) {
-          const sink = glideSink();
-          if (!glidingNow && vy > sink) vy = sink + (vy - sink) * 0.2;
+          const term = boostTerm();
+          if (vy < 0 && vy < term) {
+            vy += GRAVITY * riseBleed() * dt;
+          } else {
+            if (!glidingNow && vy > term) vy = term + (vy - term) * 0.5;
+            vy += (term - vy) * Math.min(1, dt * 5);
+          }
           glidingNow = true;
-          vy += glideAccel() * dt;
-          meter = Math.max(0, meter - dt / (1.6 + stats().glide * 0.45));
+          meter = Math.max(0, meter - dt / (1.15 + stats().glide * 0.28));
+          if (meter <= 0) {
+            meter = 0;
+            glideLocked = true;
+            glidingNow = false;
+          }
         } else {
           glidingNow = false;
           vy += GRAVITY * dt;
-          meter = Math.min(1, meter + dt * (0.18 + stats().glide * 0.04));
+          if (!intent.jumpHeld) {
+            meter = Math.min(1, meter + dt * (0.14 + stats().glide * 0.03));
+          }
         }
-        if (intent.roll) vx += intent.roll * accel() * 0.55 * dt;
+        if (intent.roll) vx += intent.roll * airSteer() * dt;
         const cap = maxVx() * 1.15;
         if (vx > cap) vx = cap;
         if (vx < -cap) vx = -cap;
@@ -456,6 +469,8 @@
         vy = 0;
         grounded = true;
         glidingNow = false;
+        glideLocked = false;
+        if (intent.jumpHeld) charging = true;
       }
 
       Buildings.setCam(x - Kernel.view.w * 0.32);
@@ -468,7 +483,7 @@
 
     function snapshot() {
       return {
-        x, y, vx, r: R, spin, charge, meter, grounded, charging, alive,
+        x, y, vx, r: R, spin, charge: grounded && charging ? charge : 0, meter, grounded, charging, alive,
         gliding: glidingNow,
         distance: Math.max(0, Math.floor((x - startX) / 8))
       };
@@ -1135,7 +1150,7 @@
       ctx.fillText((map && map.name) || "MAP", 136, 30);
       ctx.fillStyle = "rgba(200,230,255,0.75)";
       ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText("← → roll  ·  hold jump to charge  ·  hold in air to glide", 136, 48);
+      ctx.fillText("← → roll  ·  hold jump to charge  ·  hold in air to boost", 136, 48);
       button("pause", 16, 16, 100, 40, "Pause", "", false);
     }
 
@@ -1167,7 +1182,7 @@
       let by = 120;
       const rows = [
         ["jump", "JUMP", "Charge higher on the roof"],
-        ["glide", "GLIDE", "Hold jump in air to hang"],
+        ["glide", "GLIDE", "Hold jump in air to boost"],
         ["speed", "SPEED", "Roll harder left and right"]
       ];
       for (const [id, label, blurb] of rows) {
