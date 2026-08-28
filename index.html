@@ -115,7 +115,7 @@
 
     function recordRun({ distance, finished }) {
       const meters = Math.max(0, distance | 0);
-      const earned = Math.max(1, Math.floor(meters / 10)) + (finished ? 50 : 0);
+      const earned = Math.max(1, Math.floor(meters / 40)) + (finished ? 50 : 0);
       data.tickets += earned;
       if (meters > data.best) data.best = meters;
       save();
@@ -154,54 +154,286 @@
     }
 
     const NEON = pack("neon", "Neon", "Neon lights cityscape, dont fall.", [
-      { w: 280, h: 150, roof: "flat", gap: 80, hue: 250 },
-      { w: 150, h: 145, roof: "flat", gap: 64, hue: 270 },
-      { w: 160, h: 220, roof: "ramp-right", peak: 52, gap: 96, hue: 220 },
-      { w: 170, h: 240, roof: "flat", gap: 156, hue: 290 },
-      { w: 130, h: 110, roof: "flat", gap: 44, hue: 240 },
-      { w: 130, h: 125, roof: "flat", gap: 56, hue: 260 },
-      { w: 190, h: 220, roof: "peak", peak: 36, gap: 92, hue: 210 },
-      { w: 120, h: 255, roof: "flat", gap: 198, hue: 280 },
-      { w: 160, h: 165, roof: "ramp-left", peak: 38, gap: 86, hue: 230 },
-      { w: 110, h: 100, roof: "flat", gap: 38, hue: 300 },
-      { w: 110, h: 115, roof: "flat", gap: 42, hue: 245 },
-      { w: 150, h: 130, roof: "flat", gap: 120, hue: 255 },
-      { w: 200, h: 235, roof: "ramp-right", peak: 70, gap: 70, hue: 265 },
-      { w: 150, h: 340, roof: "flat", gap: 64, hue: 215 },
-      { w: 140, h: 385, roof: "flat", gap: 60, hue: 275 },
-      { w: 220, h: 460, roof: "peak", peak: 48, gap: 104, hue: 285 },
-      { w: 150, h: 210, roof: "ramp-left", peak: 42, gap: 88, hue: 235 },
-      { w: 180, h: 200, roof: "flat", gap: 58, hue: 295 },
-      { w: 120, h: 130, roof: "flat", gap: 128, hue: 248 },
-      { w: 170, h: 250, roof: "flat", gap: 160, hue: 218 },
-      { w: 150, h: 155, roof: "flat", gap: 46, hue: 268 },
-      { w: 130, h: 165, roof: "flat", gap: 46, hue: 258 },
-      { w: 190, h: 300, roof: "ramp-right", peak: 50, gap: 42, hue: 228 },
-      { w: 140, h: 220, roof: "flat", gap: 214, hue: 278 },
-      { w: 180, h: 185, roof: "flat", gap: 80, hue: 238 },
-      { w: 160, h: 270, roof: "peak", peak: 42, gap: 92, hue: 288 },
-      { w: 200, h: 230, roof: "flat", gap: 40, hue: 242 },
-      { w: 170, h: 250, roof: "flat", gap: 48, hue: 262 }
+      { w: 216, h: 152, roof: "flat", gap: 56, hue: 248 },
+      { w: 146, h: 146, roof: "flat", gap: 44, hue: 262 },
+      { w: 168, h: 156, roof: "peak", peak: 28, gap: 50, hue: 226 },
+      { w: 128, h: 144, roof: "flat", gap: 40, hue: 278 },
+      { w: 176, h: 154, roof: "flat", gap: 62, hue: 238 },
+      { w: 118, h: 142, roof: "ramp-right", peak: 22, gap: 42, hue: 292 },
+      { w: 158, h: 150, roof: "flat", gap: 54, hue: 214 },
+      { w: 182, h: 158, roof: "flat", gap: 48, hue: 270 },
+      { w: 136, h: 166, roof: "flat", gap: 46, hue: 242 },
+      { w: 124, h: 176, roof: "flat", gap: 50, hue: 256 },
+      { w: 148, h: 186, roof: "ramp-right", peak: 26, gap: 42, hue: 220 },
+      { w: 132, h: 196, roof: "flat", gap: 54, hue: 284 },
+      { w: 120, h: 204, roof: "flat", gap: 46, hue: 232 },
+      { w: 152, h: 212, roof: "peak", peak: 32, gap: 58, hue: 268 },
+      { w: 140, h: 218, roof: "flat", gap: 44, hue: 296 },
+      { w: 164, h: 224, roof: "flat", gap: 154, hue: 250 },
+      { w: 212, h: 218, roof: "flat", gap: 52, hue: 236 },
+      { w: 174, h: 210, roof: "flat", gap: 48, hue: 274 },
+      { w: 200, h: 204, roof: "ramp-left", peak: 24, gap: 60, hue: 218 },
+      { w: 158, h: 198, roof: "flat", gap: 42, hue: 288 },
+      { w: 228, h: 192, roof: "flat", gap: 64, hue: 244 },
+      { w: 186, h: 168, roof: "flat", gap: 50, hue: 260 },
+      { w: 176, h: 128, roof: "flat", gap: 44, hue: 230 },
+      { w: 176, h: 108, roof: "flat", gap: 58, hue: 276 },
+      { w: 158, h: 112, roof: "flat", gap: 40, hue: 246 },
+      { w: 212, h: 118, roof: "peak", peak: 22, gap: 54, hue: 212 },
+      { w: 160, h: 110, roof: "flat", gap: 46, hue: 294 },
+      { w: 198, h: 116, roof: "flat", gap: 62, hue: 254 },
+      { w: 140, h: 108, roof: "ramp-right", peak: 18, gap: 38, hue: 228 },
+      { w: 220, h: 122, roof: "flat", gap: 50, hue: 266 },
+      { w: 180, h: 114, roof: "flat", gap: 56, hue: 240 },
+      { w: 178, h: 120, roof: "flat", gap: 42, hue: 282 },
+      { w: 198, h: 126, roof: "peak", peak: 26, gap: 48, hue: 216 },
+      { w: 152, h: 118, roof: "flat", gap: 64, hue: 272 },
+      { w: 196, h: 124, roof: "ramp-left", peak: 20, gap: 46, hue: 234 },
+      { w: 214, h: 130, roof: "flat", gap: 52, hue: 258 },
+      { w: 202, h: 158, roof: "ramp-right", peak: 36, gap: 44, hue: 222 },
+      { w: 192, h: 196, roof: "ramp-right", peak: 40, gap: 50, hue: 286 },
+      { w: 206, h: 236, roof: "peak", peak: 44, gap: 42, hue: 248 },
+      { w: 176, h: 274, roof: "ramp-right", peak: 38, gap: 56, hue: 210 },
+      { w: 206, h: 312, roof: "flat", gap: 48, hue: 264 },
+      { w: 218, h: 348, roof: "peak", peak: 46, gap: 40, hue: 298 },
+      { w: 174, h: 382, roof: "ramp-right", peak: 42, gap: 54, hue: 236 },
+      { w: 210, h: 412, roof: "flat", gap: 46, hue: 252 },
+      { w: 186, h: 438, roof: "peak", peak: 50, gap: 58, hue: 274 },
+      { w: 238, h: 456, roof: "flat", gap: 44, hue: 218 },
+      { w: 162, h: 448, roof: "ramp-left", peak: 34, gap: 50, hue: 290 },
+      { w: 216, h: 460, roof: "peak", peak: 48, gap: 42, hue: 244 },
+      { w: 194, h: 442, roof: "flat", gap: 60, hue: 268 },
+      { w: 178, h: 454, roof: "ramp-right", peak: 36, gap: 48, hue: 224 },
+      { w: 240, h: 446, roof: "flat", gap: 52, hue: 280 },
+      { w: 210, h: 438, roof: "peak", peak: 44, gap: 196, hue: 232 },
+      { w: 226, h: 422, roof: "flat", gap: 50, hue: 256 },
+      { w: 184, h: 368, roof: "ramp-left", peak: 30, gap: 46, hue: 214 },
+      { w: 200, h: 312, roof: "flat", gap: 58, hue: 276 },
+      { w: 168, h: 268, roof: "flat", gap: 42, hue: 240 },
+      { w: 216, h: 248, roof: "peak", peak: 28, gap: 54, hue: 292 },
+      { w: 190, h: 236, roof: "flat", gap: 48, hue: 228 },
+      { w: 218, h: 232, roof: "flat", gap: 60, hue: 262 },
+      { w: 268, h: 228, roof: "flat", gap: 50, hue: 246 },
+      { w: 200, h: 234, roof: "flat", gap: 44, hue: 270 },
+      { w: 242, h: 226, roof: "peak", peak: 24, gap: 56, hue: 218 },
+      { w: 184, h: 232, roof: "flat", gap: 40, hue: 284 },
+      { w: 250, h: 238, roof: "ramp-right", peak: 22, gap: 52, hue: 234 },
+      { w: 216, h: 224, roof: "flat", gap: 46, hue: 258 },
+      { w: 244, h: 230, roof: "flat", gap: 62, hue: 210 },
+      { w: 186, h: 236, roof: "flat", gap: 38, hue: 296 },
+      { w: 268, h: 222, roof: "peak", peak: 30, gap: 54, hue: 250 },
+      { w: 208, h: 228, roof: "flat", gap: 48, hue: 272 },
+      { w: 230, h: 234, roof: "ramp-left", peak: 20, gap: 42, hue: 226 },
+      { w: 242, h: 230, roof: "flat", gap: 58, hue: 264 },
+      { w: 182, h: 226, roof: "flat", gap: 44, hue: 242 },
+      { w: 268, h: 238, roof: "flat", gap: 50, hue: 288 },
+      { w: 196, h: 232, roof: "peak", peak: 26, gap: 46, hue: 216 },
+      { w: 238, h: 224, roof: "flat", gap: 64, hue: 254 },
+      { w: 214, h: 230, roof: "flat", gap: 40, hue: 278 },
+      { w: 252, h: 236, roof: "ramp-right", peak: 24, gap: 52, hue: 230 },
+      { w: 192, h: 228, roof: "flat", gap: 56, hue: 266 },
+      { w: 226, h: 234, roof: "flat", gap: 48, hue: 244 },
+      { w: 240, h: 222, roof: "peak", peak: 28, gap: 42, hue: 294 },
+      { w: 210, h: 228, roof: "flat", gap: 60, hue: 220 },
+      { w: 184, h: 196, roof: "flat", gap: 50, hue: 252 },
+      { w: 172, h: 154, roof: "flat", gap: 44, hue: 276 },
+      { w: 174, h: 118, roof: "flat", gap: 56, hue: 236 },
+      { w: 158, h: 122, roof: "flat", gap: 40, hue: 260 },
+      { w: 210, h: 128, roof: "peak", peak: 22, gap: 52, hue: 212 },
+      { w: 170, h: 116, roof: "flat", gap: 46, hue: 290 },
+      { w: 196, h: 124, roof: "flat", gap: 62, hue: 248 },
+      { w: 154, h: 112, roof: "ramp-left", peak: 18, gap: 38, hue: 224 },
+      { w: 220, h: 130, roof: "flat", gap: 54, hue: 268 },
+      { w: 178, h: 118, roof: "flat", gap: 48, hue: 240 },
+      { w: 198, h: 126, roof: "peak", peak: 24, gap: 44, hue: 282 },
+      { w: 146, h: 120, roof: "flat", gap: 58, hue: 216 },
+      { w: 212, h: 132, roof: "ramp-right", peak: 20, gap: 50, hue: 256 },
+      { w: 184, h: 124, roof: "flat", gap: 46, hue: 274 },
+      { w: 176, h: 148, roof: "flat", gap: 44, hue: 232 },
+      { w: 196, h: 176, roof: "ramp-right", peak: 32, gap: 50, hue: 264 },
+      { w: 164, h: 208, roof: "flat", gap: 42, hue: 246 },
+      { w: 206, h: 244, roof: "peak", peak: 38, gap: 56, hue: 218 },
+      { w: 186, h: 278, roof: "ramp-right", peak: 40, gap: 48, hue: 286 },
+      { w: 220, h: 312, roof: "flat", gap: 46, hue: 238 },
+      { w: 168, h: 346, roof: "ramp-right", peak: 36, gap: 54, hue: 270 },
+      { w: 208, h: 374, roof: "peak", peak: 44, gap: 40, hue: 222 },
+      { w: 224, h: 398, roof: "flat", gap: 52, hue: 254 },
+      { w: 178, h: 418, roof: "ramp-left", peak: 30, gap: 44, hue: 298 },
+      { w: 218, h: 436, roof: "flat", gap: 58, hue: 244 },
+      { w: 184, h: 448, roof: "peak", peak: 46, gap: 50, hue: 212 },
+      { w: 220, h: 456, roof: "flat", gap: 42, hue: 276 },
+      { w: 172, h: 442, roof: "ramp-right", peak: 34, gap: 60, hue: 228 },
+      { w: 234, h: 450, roof: "flat", gap: 48, hue: 260 },
+      { w: 200, h: 438, roof: "peak", peak: 42, gap: 208, hue: 240 },
+      { w: 272, h: 424, roof: "flat", gap: 40, hue: 252 },
     ]);
 
     const COAST = pack("coast", "Coast", "Synthwave beach. Don't drown.", [
-      { w: 260, h: 88, roof: "flat", kind: "pier", gap: 70, hue: 28 },
-      { w: 340, h: 24, roof: "dune", kind: "dune", peak: 54, skew: 0.26, gap: 96, hue: 38 },
-      { w: 180, h: 92, roof: "flat", kind: "pier", gap: 88, hue: 26 },
-      { w: 300, h: 22, roof: "dune", kind: "dune", peak: 44, skew: 0.72, gap: 76, hue: 36 },
-      { w: 110, h: 50, roof: "flat", kind: "rock", gap: 68, hue: 16 },
-      { w: 160, h: 140, roof: "ramp-left", kind: "cliff", peak: 36, gap: 68, hue: 22 },
-      { w: 150, h: 96, roof: "flat", kind: "pier", gap: 80, hue: 30 },
-      { w: 90, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 40 },
-      { w: 320, h: 24, roof: "dune", kind: "dune", peak: 50, skew: 0.3, gap: 90, hue: 38 },
-      { w: 190, h: 155, roof: "ramp-right", kind: "cliff", peak: 48, gap: 82, hue: 24 },
-      { w: 160, h: 90, roof: "flat", kind: "pier", gap: 72, hue: 28 },
-      { w: 280, h: 26, roof: "dune", kind: "dune", peak: 40, skew: 0.68, gap: 48, hue: 44 }
+      { w: 248, h: 90, roof: "flat", kind: "pier", gap: 52, hue: 28 },
+      { w: 186, h: 94, roof: "flat", kind: "pier", gap: 44, hue: 22 },
+      { w: 214, h: 88, roof: "flat", kind: "pier", gap: 58, hue: 32 },
+      { w: 162, h: 92, roof: "flat", kind: "pier", gap: 40, hue: 26 },
+      { w: 232, h: 96, roof: "flat", kind: "pier", gap: 50, hue: 30 },
+      { w: 198, h: 91, roof: "flat", kind: "pier", gap: 46, hue: 24 },
+      { w: 328, h: 24, roof: "dune", kind: "dune", peak: 52, skew: 0.28, gap: 54, hue: 38 },
+      { w: 292, h: 22, roof: "dune", kind: "dune", peak: 44, skew: 0.68, gap: 48, hue: 42 },
+      { w: 340, h: 26, roof: "dune", kind: "dune", peak: 50, skew: 0.32, gap: 60, hue: 36 },
+      { w: 286, h: 20, roof: "dune", kind: "dune", peak: 40, skew: 0.72, gap: 44, hue: 44 },
+      { w: 316, h: 24, roof: "dune", kind: "dune", peak: 48, skew: 0.24, gap: 52, hue: 34 },
+      { w: 304, h: 22, roof: "dune", kind: "dune", peak: 54, skew: 0.62, gap: 156, hue: 40 },
+      { w: 202, h: 90, roof: "flat", kind: "pier", gap: 46, hue: 28 },
+      { w: 100, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 40 },
+      { w: 234, h: 88, roof: "flat", kind: "pier", gap: 54, hue: 26 },
+      { w: 174, h: 94, roof: "flat", kind: "pier", gap: 48, hue: 32 },
+      { w: 210, h: 92, roof: "flat", kind: "pier", gap: 50, hue: 22 },
+      { w: 120, h: 48, roof: "flat", kind: "rock", gap: 42, hue: 16 },
+      { w: 222, h: 88, roof: "flat", kind: "pier", gap: 56, hue: 30 },
+      { w: 90, h: 20, roof: "flat", kind: "sand", gap: 0, hue: 38 },
+      { w: 254, h: 94, roof: "flat", kind: "pier", gap: 44, hue: 26 },
+      { w: 188, h: 90, roof: "flat", kind: "pier", gap: 60, hue: 34 },
+      { w: 158, h: 86, roof: "flat", kind: "pier", gap: 40, hue: 20 },
+      { w: 232, h: 96, roof: "flat", kind: "pier", gap: 52, hue: 28 },
+      { w: 180, h: 91, roof: "flat", kind: "pier", gap: 46, hue: 24 },
+      { w: 246, h: 93, roof: "flat", kind: "pier", gap: 48, hue: 30 },
+      { w: 186, h: 118, roof: "ramp-right", kind: "cliff", peak: 40, gap: 46, hue: 22 },
+      { w: 176, h: 148, roof: "ramp-right", kind: "cliff", peak: 44, gap: 42, hue: 18 },
+      { w: 196, h: 168, roof: "ramp-left", kind: "cliff", peak: 38, gap: 50, hue: 24 },
+      { w: 164, h: 158, roof: "ramp-right", kind: "cliff", peak: 48, gap: 44, hue: 20 },
+      { w: 186, h: 178, roof: "ramp-left", kind: "cliff", peak: 36, gap: 40, hue: 16 },
+      { w: 216, h: 188, roof: "ramp-right", kind: "cliff", peak: 46, gap: 52, hue: 22 },
+      { w: 316, h: 24, roof: "dune", kind: "dune", peak: 42, skew: 0.3, gap: 48, hue: 36 },
+      { w: 208, h: 90, roof: "flat", kind: "pier", gap: 54, hue: 28 },
+      { w: 340, h: 22, roof: "dune", kind: "dune", peak: 50, skew: 0.7, gap: 44, hue: 42 },
+      { w: 104, h: 20, roof: "flat", kind: "sand", gap: 0, hue: 44 },
+      { w: 332, h: 26, roof: "dune", kind: "dune", peak: 46, skew: 0.26, gap: 58, hue: 38 },
+      { w: 192, h: 92, roof: "flat", kind: "pier", gap: 50, hue: 26 },
+      { w: 340, h: 24, roof: "dune", kind: "dune", peak: 54, skew: 0.64, gap: 42, hue: 34 },
+      { w: 126, h: 52, roof: "flat", kind: "rock", gap: 46, hue: 18 },
+      { w: 320, h: 22, roof: "dune", kind: "dune", peak: 40, skew: 0.34, gap: 192, hue: 40 },
+      { w: 218, h: 90, roof: "flat", kind: "pier", gap: 48, hue: 30 },
+      { w: 98, h: 22, roof: "flat", kind: "sand", gap: 8, hue: 38 },
+      { w: 238, h: 94, roof: "flat", kind: "pier", gap: 54, hue: 24 },
+      { w: 176, h: 88, roof: "flat", kind: "pier", gap: 42, hue: 32 },
+      { w: 198, h: 92, roof: "flat", kind: "pier", gap: 50, hue: 28 },
+      { w: 340, h: 26, roof: "dune", kind: "dune", peak: 52, skew: 0.22, gap: 204, hue: 36 },
+      { w: 270, h: 90, roof: "flat", kind: "pier", gap: 40, hue: 26 },
     ], "coast");
 
-    const catalog = [NEON, COAST];
+    const HIGHWAY = pack("highway", "Highway", "Night asphalt. Don't miss the span.", [
+      { w: 248, h: 88, roof: "flat", kind: "road", gap: 16, hue: 278 },
+      { w: 300, h: 92, roof: "flat", kind: "road", gap: 8, hue: 286 },
+      { w: 176, h: 84, roof: "flat", kind: "road", gap: 0, hue: 270 },
+      { w: 268, h: 90, roof: "flat", kind: "road", gap: 22, hue: 292 },
+      { w: 188, h: 86, roof: "flat", kind: "road", gap: 12, hue: 274 },
+      { w: 328, h: 96, roof: "flat", kind: "road", gap: 4, hue: 282 },
+      { w: 164, h: 82, roof: "flat", kind: "road", gap: 18, hue: 266 },
+      { w: 284, h: 94, roof: "flat", kind: "road", gap: 28, hue: 288 },
+      { w: 248, h: 88, roof: "flat", kind: "road", gap: 10, hue: 276 },
+      { w: 172, h: 90, roof: "flat", kind: "road", gap: 0, hue: 294 },
+      { w: 258, h: 86, roof: "flat", kind: "road", gap: 24, hue: 268 },
+      { w: 292, h: 98, roof: "flat", kind: "road", gap: 14, hue: 280 },
+      { w: 246, h: 118, roof: "ramp-right", kind: "onramp", peak: 36, gap: 8, hue: 284 },
+      { w: 198, h: 152, roof: "ramp-right", kind: "onramp", peak: 40, gap: 16, hue: 272 },
+      { w: 262, h: 184, roof: "ramp-right", kind: "onramp", peak: 44, gap: 4, hue: 290 },
+      { w: 174, h: 168, roof: "ramp-right", kind: "onramp", peak: 32, gap: 20, hue: 266 },
+      { w: 256, h: 198, roof: "ramp-right", kind: "onramp", peak: 38, gap: 12, hue: 278 },
+      { w: 254, h: 216, roof: "ramp-right", kind: "onramp", peak: 42, gap: 6, hue: 286 },
+      { w: 186, h: 208, roof: "ramp-right", kind: "onramp", peak: 34, gap: 18, hue: 274 },
+      { w: 270, h: 224, roof: "ramp-right", kind: "onramp", peak: 46, gap: 148, hue: 292 },
+      { w: 276, h: 218, roof: "flat", kind: "road", gap: 10, hue: 280 },
+      { w: 196, h: 212, roof: "flat", kind: "road", gap: 22, hue: 268 },
+      { w: 244, h: 220, roof: "flat", kind: "road", gap: 8, hue: 288 },
+      { w: 306, h: 216, roof: "flat", kind: "road", gap: 16, hue: 276 },
+      { w: 245, h: 198, roof: "ramp-left", kind: "onramp", peak: 40, gap: 12, hue: 284 },
+      { w: 178, h: 176, roof: "ramp-left", kind: "onramp", peak: 34, gap: 20, hue: 270 },
+      { w: 264, h: 148, roof: "ramp-left", kind: "onramp", peak: 38, gap: 6, hue: 292 },
+      { w: 252, h: 122, roof: "flat", kind: "road", gap: 18, hue: 278 },
+      { w: 168, h: 108, roof: "ramp-left", kind: "onramp", peak: 28, gap: 8, hue: 266 },
+      { w: 294, h: 96, roof: "flat", kind: "road", gap: 24, hue: 286 },
+      { w: 251, h: 90, roof: "flat", kind: "road", gap: 0, hue: 274 },
+      { w: 278, h: 94, roof: "flat", kind: "road", gap: 14, hue: 290 },
+      { w: 190, h: 88, roof: "flat", kind: "road", gap: 28, hue: 268 },
+      { w: 320, h: 98, roof: "flat", kind: "road", gap: 4, hue: 282 },
+      { w: 162, h: 86, roof: "flat", kind: "road", gap: 16, hue: 276 },
+      { w: 248, h: 92, roof: "flat", kind: "road", gap: 10, hue: 294 },
+      { w: 274, h: 88, roof: "flat", kind: "road", gap: 22, hue: 272 },
+      { w: 258, h: 94, roof: "flat", kind: "road", gap: 8, hue: 280 },
+      { w: 242, h: 118, roof: "ramp-right", kind: "overpass", peak: 36, gap: 12, hue: 284 },
+      { w: 198, h: 148, roof: "ramp-right", kind: "overpass", peak: 40, gap: 6, hue: 270 },
+      { w: 266, h: 178, roof: "peak", kind: "overpass", peak: 48, gap: 18, hue: 288 },
+      { w: 174, h: 164, roof: "ramp-right", kind: "overpass", peak: 32, gap: 8, hue: 266 },
+      { w: 244, h: 198, roof: "peak", kind: "overpass", peak: 44, gap: 14, hue: 278 },
+      { w: 258, h: 224, roof: "ramp-right", kind: "overpass", peak: 42, gap: 4, hue: 292 },
+      { w: 186, h: 216, roof: "peak", kind: "overpass", peak: 50, gap: 20, hue: 274 },
+      { w: 274, h: 242, roof: "ramp-right", kind: "overpass", peak: 38, gap: 10, hue: 286 },
+      { w: 248, h: 254, roof: "peak", kind: "overpass", peak: 46, gap: 16, hue: 268 },
+      { w: 246, h: 268, roof: "ramp-right", kind: "overpass", peak: 40, gap: 8, hue: 280 },
+      { w: 168, h: 258, roof: "peak", kind: "overpass", peak: 42, gap: 22, hue: 294 },
+      { w: 286, h: 274, roof: "ramp-right", kind: "overpass", peak: 44, gap: 6, hue: 276 },
+      { w: 188, h: 266, roof: "peak", kind: "overpass", peak: 48, gap: 12, hue: 272 },
+      { w: 253, h: 278, roof: "ramp-right", kind: "overpass", peak: 36, gap: 18, hue: 290 },
+      { w: 260, h: 270, roof: "peak", kind: "overpass", peak: 52, gap: 4, hue: 284 },
+      { w: 255, h: 264, roof: "flat", kind: "overpass", gap: 188, hue: 278 },
+      { w: 280, h: 258, roof: "flat", kind: "road", gap: 10, hue: 286 },
+      { w: 178, h: 250, roof: "flat", kind: "road", gap: 16, hue: 270 },
+      { w: 248, h: 246, roof: "flat", kind: "road", gap: 8, hue: 292 },
+      { w: 302, h: 240, roof: "flat", kind: "road", gap: 22, hue: 276 },
+      { w: 196, h: 234, roof: "flat", kind: "road", gap: 12, hue: 268 },
+      { w: 266, h: 228, roof: "flat", kind: "road", gap: 6, hue: 284 },
+      { w: 336, h: 222, roof: "flat", kind: "road", gap: 8, hue: 280 },
+      { w: 256, h: 218, roof: "flat", kind: "road", gap: 18, hue: 272 },
+      { w: 184, h: 224, roof: "flat", kind: "road", gap: 0, hue: 288 },
+      { w: 290, h: 220, roof: "flat", kind: "road", gap: 14, hue: 266 },
+      { w: 247, h: 216, roof: "flat", kind: "road", gap: 24, hue: 294 },
+      { w: 276, h: 222, roof: "flat", kind: "road", gap: 6, hue: 278 },
+      { w: 164, h: 218, roof: "flat", kind: "road", gap: 12, hue: 286 },
+      { w: 322, h: 224, roof: "flat", kind: "road", gap: 20, hue: 274 },
+      { w: 242, h: 220, roof: "flat", kind: "road", gap: 4, hue: 290 },
+      { w: 198, h: 216, roof: "flat", kind: "road", gap: 16, hue: 268 },
+      { w: 276, h: 222, roof: "flat", kind: "road", gap: 10, hue: 282 },
+      { w: 172, h: 218, roof: "flat", kind: "road", gap: 0, hue: 276 },
+      { w: 304, h: 224, roof: "flat", kind: "road", gap: 22, hue: 292 },
+      { w: 254, h: 220, roof: "flat", kind: "road", gap: 8, hue: 270 },
+      { w: 257, h: 216, roof: "flat", kind: "road", gap: 14, hue: 284 },
+      { w: 348, h: 222, roof: "flat", kind: "road", gap: 18, hue: 278 },
+      { w: 186, h: 218, roof: "flat", kind: "road", gap: 6, hue: 266 },
+      { w: 270, h: 224, roof: "flat", kind: "road", gap: 12, hue: 288 },
+      { w: 242, h: 220, roof: "flat", kind: "road", gap: 26, hue: 274 },
+      { w: 286, h: 216, roof: "flat", kind: "road", gap: 4, hue: 280 },
+      { w: 244, h: 222, roof: "flat", kind: "road", gap: 16, hue: 294 },
+      { w: 246, h: 188, roof: "ramp-left", kind: "onramp", peak: 36, gap: 10, hue: 286 },
+      { w: 192, h: 154, roof: "ramp-left", kind: "onramp", peak: 32, gap: 18, hue: 272 },
+      { w: 268, h: 122, roof: "ramp-left", kind: "onramp", peak: 40, gap: 8, hue: 290 },
+      { w: 248, h: 108, roof: "flat", kind: "road", gap: 14, hue: 278 },
+      { w: 176, h: 96, roof: "flat", kind: "road", gap: 22, hue: 266 },
+      { w: 296, h: 90, roof: "flat", kind: "road", gap: 6, hue: 284 },
+      { w: 252, h: 94, roof: "flat", kind: "road", gap: 12, hue: 274 },
+      { w: 168, h: 88, roof: "flat", kind: "road", gap: 0, hue: 292 },
+      { w: 274, h: 92, roof: "flat", kind: "road", gap: 20, hue: 280 },
+      { w: 254, h: 86, roof: "flat", kind: "road", gap: 8, hue: 268 },
+      { w: 255, h: 116, roof: "ramp-right", kind: "onramp", peak: 34, gap: 10, hue: 282 },
+      { w: 194, h: 146, roof: "ramp-right", kind: "onramp", peak: 38, gap: 16, hue: 270 },
+      { w: 264, h: 176, roof: "ramp-right", kind: "onramp", peak: 42, gap: 6, hue: 288 },
+      { w: 172, h: 162, roof: "ramp-right", kind: "onramp", peak: 30, gap: 20, hue: 276 },
+      { w: 248, h: 194, roof: "ramp-right", kind: "onramp", peak: 36, gap: 12, hue: 266 },
+      { w: 241, h: 218, roof: "ramp-right", kind: "onramp", peak: 44, gap: 8, hue: 294 },
+      { w: 278, h: 236, roof: "ramp-right", kind: "onramp", peak: 40, gap: 14, hue: 284 },
+      { w: 184, h: 228, roof: "peak", kind: "overpass", peak: 46, gap: 4, hue: 272 },
+      { w: 256, h: 248, roof: "ramp-right", kind: "overpass", peak: 38, gap: 18, hue: 290 },
+      { w: 245, h: 258, roof: "peak", kind: "overpass", peak: 50, gap: 10, hue: 278 },
+      { w: 166, h: 250, roof: "ramp-right", kind: "overpass", peak: 34, gap: 22, hue: 268 },
+      { w: 280, h: 266, roof: "peak", kind: "overpass", peak: 44, gap: 8, hue: 286 },
+      { w: 248, h: 274, roof: "ramp-right", kind: "overpass", peak: 40, gap: 16, hue: 274 },
+      { w: 198, h: 268, roof: "peak", kind: "overpass", peak: 48, gap: 6, hue: 292 },
+      { w: 270, h: 278, roof: "ramp-right", kind: "overpass", peak: 42, gap: 12, hue: 280 },
+      { w: 244, h: 270, roof: "flat", kind: "overpass", gap: 198, hue: 276 },
+      { w: 368, h: 262, roof: "flat", kind: "road", gap: 24, hue: 282 },
+    ], "highway");
+
+    const catalog = [NEON, COAST, HIGHWAY];
     let active = NEON;
     let camX = 0;
+    let camY = 0;
 
     function listMaps() {
       return catalog.map(m => ({ id: m.id, name: m.name, blurb: m.blurb }));
@@ -211,6 +443,7 @@
     function load(id) {
       active = getMap(id) || NEON;
       camX = 0;
+      camY = 0;
       return active;
     }
 
@@ -277,10 +510,18 @@
       return { minX: 0, maxX: last.x + last.w + 200, groundY: active.groundY };
     }
 
-    function setCam(x) {
+    function setCam(x, focusY) {
       const b = bounds();
       const vis = Kernel.view.w;
+      const vh = Kernel.view.h;
       camX = Math.max(b.minX, Math.min(x, b.maxX - vis));
+      if (focusY == null) return;
+      const topM = Math.max(72, vh * 0.18);
+      const botM = Math.max(88, vh * 0.24);
+      let next = focusY - vh * 0.40;
+      next = Math.min(next, focusY - topM);
+      next = Math.max(next, focusY - (vh - botM));
+      camY = Math.min(next, GROUND_Y - vh * 0.58);
     }
 
     function roofPoly(b) {
@@ -307,7 +548,7 @@
     }
 
     function screenY(wy) {
-      return wy + (Kernel.view.h - 48) - GROUND_Y;
+      return wy - camY;
     }
 
     return {
@@ -379,6 +620,7 @@
       coyote = 0;
       startX = x;
       alive = true;
+      Buildings.setCam(x - Kernel.view.w * 0.32, y);
     }
 
     function setIntent(next) {
@@ -524,7 +766,7 @@
         if (intent.jumpHeld) charging = true;
       }
 
-      Buildings.setCam(x - Kernel.view.w * 0.32);
+      Buildings.setCam(x - Kernel.view.w * 0.32, y);
 
       if (grounded && !wasGrounded) Kernel.bus.emit("landed");
 
@@ -972,6 +1214,98 @@
       ctx.shadowBlur = 0;
     }
 
+    function drawMountains(w, horizon) {
+      const peaks = [
+        [0.0, 28], [0.08, 70], [0.16, 36], [0.24, 110], [0.34, 48],
+        [0.42, 88], [0.52, 30], [0.60, 124], [0.70, 54], [0.78, 92],
+        [0.88, 40], [0.96, 76], [1.0, 34]
+      ];
+      ctx.beginPath();
+      ctx.moveTo(0, Kernel.view.h);
+      ctx.lineTo(0, horizon + 40);
+      for (const [u, hh] of peaks) ctx.lineTo(w * u, horizon - hh);
+      ctx.lineTo(w, horizon + 80);
+      ctx.lineTo(w, Kernel.view.h);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, horizon - 130, 0, horizon + 90);
+      g.addColorStop(0, "#1a0830");
+      g.addColorStop(0.55, "#0c0418");
+      g.addColorStop(1, "#070218");
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, horizon + 40);
+      for (const [u, hh] of peaks) ctx.lineTo(w * u, horizon - hh);
+      ctx.strokeStyle = "rgba(255,45,200,0.28)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    function drawAsphaltFloor(w, h, gy) {
+      const g = ctx.createLinearGradient(0, gy, 0, h);
+      g.addColorStop(0, "#2a2438");
+      g.addColorStop(0.18, "#1a1428");
+      g.addColorStop(1, "#080510");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, gy, w, Math.max(0, h - gy));
+      ctx.strokeStyle = "rgba(255,210,80,0.22)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, gy + 3);
+      ctx.lineTo(w, gy + 3);
+      ctx.stroke();
+    }
+
+    function drawHighwayPad(b, cam) {
+      const sx = b.x - cam;
+      const eave = Buildings.eaveY(b);
+      const top = Buildings.screenY(eave);
+      const gy = Buildings.screenY(Buildings.groundY());
+      const poly = Buildings.roofPoly(b);
+      const hue = b.hue || 280;
+      const kind = b.kind || "road";
+      const deckH = 16;
+
+      if (kind === "overpass" || b.h > 140) {
+        ctx.fillStyle = "#16101c";
+        for (let x = sx + 18; x < sx + b.w - 10; x += 56) {
+          ctx.fillRect(x, top + 8, 10, Math.max(0, gy - top - 8));
+        }
+      } else {
+        ctx.fillStyle = "#1a1522";
+        ctx.fillRect(sx + 4, top, b.w - 8, Math.max(0, gy - top));
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
+      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0] - cam, Buildings.screenY(poly[i][1]));
+      ctx.lineTo(poly[poly.length - 1][0] - cam, Buildings.screenY(poly[poly.length - 1][1]) + deckH);
+      ctx.lineTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]) + deckH);
+      ctx.closePath();
+      ctx.fillStyle = "#2a2834";
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
+      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0] - cam, Buildings.screenY(poly[i][1]));
+      ctx.strokeStyle = `hsl(${hue} 90% 65%)`;
+      ctx.shadowColor = `hsl(${hue} 100% 60%)`;
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      ctx.save();
+      ctx.strokeStyle = "#ffd24a";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([12, 14]);
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]) + 2);
+      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0] - cam, Buildings.screenY(poly[i][1]) + 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function drawBall(snap, cam) {
       const x = snap.x - cam;
       const y = Buildings.screenY(snap.y);
@@ -1003,6 +1337,17 @@
       for (let i = 0; i < BANDS.length; i++) {
         ctx.fillStyle = BANDS[i];
         ctx.fillRect(-BALL_R - 1, -BALL_R + (hh * i) / BANDS.length, BALL_R * 2 + 2, hh / BANDS.length + 1);
+      }
+      if (squash > 0.02) {
+        const fillH = BALL_R * 2 * squash;
+        const cg = ctx.createLinearGradient(0, BALL_R - fillH, 0, BALL_R);
+        cg.addColorStop(0, "rgba(255,244,210,0.2)");
+        cg.addColorStop(0.4, "rgba(60,246,255,0.78)");
+        cg.addColorStop(1, "rgba(255,210,74,0.95)");
+        ctx.fillStyle = cg;
+        ctx.fillRect(-BALL_R - 1, BALL_R - fillH, BALL_R * 2 + 2, fillH + 1);
+        ctx.fillStyle = "rgba(255,255,240,0.7)";
+        ctx.fillRect(-BALL_R, BALL_R - fillH - 1, BALL_R * 2, 2);
       }
       const shade = ctx.createRadialGradient(-BALL_R * 0.35, -BALL_R * 0.4, BALL_R * 0.1, 0, 0, BALL_R);
       shade.addColorStop(0, "rgba(255,255,255,0.28)");
@@ -1079,64 +1424,42 @@
     }
 
     function drawHud(snap) {
-      const { w, h } = Kernel.view;
-      const p = Progression.snapshot();
-      const barH = 44;
-      const y0 = h - barH - 12;
-      ctx.fillStyle = "rgba(6,2,20,0.82)";
-      ctx.fillRect(12, y0, w - 24, barH);
-      ctx.strokeStyle = "rgba(60,246,255,0.65)";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(12, y0, w - 24, barH);
-
+      const { w } = Kernel.view;
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 8;
       ctx.font = `800 22px ${FACE}`;
       ctx.fillStyle = "#fff4d2";
-      ctx.fillText(`${snap.distance} M`, 24, y0 + 30);
-
-      function pips(label, lv, x) {
-        ctx.font = "700 10px ui-sans-serif, system-ui, sans-serif";
-        ctx.fillStyle = "#3cf6ff";
-        ctx.fillText(label, x, y0 + 16);
-        for (let i = 0; i < 5; i++) {
-          ctx.fillStyle = i < lv ? "#ffd24a" : "rgba(255,255,255,0.12)";
-          ctx.fillRect(x + i * 11, y0 + 22, 9, 10);
-        }
-      }
-      pips("JUMP", p.jump, 130);
-      pips("BOOST", p.glide, 210);
-      pips("SPEED", p.speed, 290);
-
-      const mx = 380;
-      const mw = Math.max(80, Math.min(200, w - 620));
+      ctx.fillText(`${snap.distance} M`, 18, 32);
+      const mw = Math.min(168, Math.max(96, w * 0.22));
+      const mx = w - mw - 18;
       ctx.font = "700 10px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillStyle = snap.gliding ? "#9cffff" : "rgba(214,247,255,0.7)";
-      ctx.fillText("FUEL", mx, y0 + 16);
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(mx, y0 + 22, mw, 10);
+      ctx.fillStyle = snap.gliding ? "#9cffff" : "rgba(214,247,255,0.75)";
+      ctx.fillText("FUEL", mx, 16);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(mx, 22, mw, 8);
       ctx.fillStyle = snap.gliding ? "#9cffff" : snap.meter > 0.25 ? "#5cf0ff" : "#ffd24a";
-      ctx.fillRect(mx, y0 + 22, mw * snap.meter, 10);
-
-      ctx.textAlign = "right";
-      ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillStyle = "#fff4d2";
-      ctx.fillText(`TIX ${p.tickets}`, w - 28, y0 + 20);
-      ctx.fillStyle = "rgba(214,247,255,0.75)";
-      ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText(`BEST ${p.best}`, w - 28, y0 + 36);
-      ctx.textAlign = "left";
+      ctx.fillRect(mx, 22, mw * snap.meter, 8);
+      ctx.restore();
     }
 
     function drawPlay() {
       const { w, h } = Kernel.view;
       const cam = Buildings.camX();
       const snap = Ball.snapshot();
-      const beach = Buildings.theme() === "coast";
+      const mapId = Buildings.id();
+      const beach = mapId === "coast";
+      const highway = mapId === "highway";
       if (beach) drawBeachSky(w, h);
       else drawSky(w, h);
+      if (highway) drawMountains(w, h * 0.40);
       const gy = Buildings.screenY(Buildings.groundY());
       if (beach) {
         drawWater(w, h, gy);
         drawShore(w, gy);
+      } else if (highway) {
+        drawAsphaltFloor(w, h, gy);
       } else {
         ctx.fillStyle = "#0a0614";
         ctx.fillRect(0, gy, w, h);
@@ -1157,6 +1480,7 @@
         const b = list[i];
         if (b.x + b.w < cam - 30 || b.x > cam + w + 30) continue;
         if (beach) drawCoastPad(b, cam);
+        else if (highway) drawHighwayPad(b, cam);
         else drawBuilding(b, cam);
       }
 
@@ -1280,14 +1604,24 @@
         hat: [],
         bassOn: [0],
         padOn: [0],
-        arpEvery: 1,
+        arpEvery: 8,
         arpOpen: 2100,
         arpClose: 520,
-        arpQ: 4,
-        arpVol: 0.055,
+        arpQ: 2,
+        arpVol: 0.022,
+        arpAttack: 0.12,
+        arpDur: 2.4,
+        arpRelease: 1.8,
+        arpSweep: 1.8,
+        padDur: 4,
+        padVol: 0.046,
+        padFilter: 380,
+        bassDur: 1.7,
         bassOpen: 1100,
         bassClose: 160,
         bassQ: 7,
+        kickHz: 64,
+        kickVol: 0.6,
         drive: 1.6,
         hatVol: 0
       },
@@ -1310,9 +1644,19 @@
         arpClose: 900,
         arpQ: 3.2,
         arpVol: 0.05,
+        arpAttack: 0.01,
+        arpDur: 0.3,
+        arpRelease: 0.18,
+        arpSweep: 0.22,
+        padDur: 2.5,
+        padVol: 0.028,
+        padFilter: 520,
+        bassDur: 0.55,
         bassOpen: 1400,
         bassClose: 220,
         bassQ: 5,
+        kickHz: 70,
+        kickVol: 0.7,
         drive: 2.1,
         hatVol: 0.045
       },
@@ -1330,20 +1674,65 @@
         hat: [1, 5],
         bassOn: [0],
         padOn: [0],
-        arpEvery: 2,
+        arpEvery: 4,
         arpOpen: 1600,
         arpClose: 420,
-        arpQ: 5.5,
-        arpVol: 0.042,
+        arpQ: 2.2,
+        arpVol: 0.020,
+        arpAttack: 0.12,
+        arpDur: 2.4,
+        arpRelease: 2.0,
+        arpSweep: 1.8,
+        padDur: 4.5,
+        padVol: 0.048,
+        padFilter: 360,
+        bassDur: 1.8,
         bassOpen: 900,
         bassClose: 140,
         bassQ: 8,
+        kickHz: 64,
+        kickVol: 0.6,
         drive: 1.25,
         hatVol: 0.028
+      },
+      highway: {
+        bpm: 91,
+        chords: [
+          [110.00, 130.81, 164.81],
+          [98.00, 123.47, 146.83],
+          [87.31, 110.00, 130.81],
+          [82.41, 98.00, 123.47]
+        ],
+        roots: [55.00, 49.00, 43.65, 41.20],
+        kick: [0, 4],
+        snare: [2, 6],
+        hat: [],
+        bassOn: [0],
+        padOn: [0],
+        arpEvery: 8,
+        arpOpen: 1800,
+        arpClose: 420,
+        arpQ: 1.8,
+        arpVol: 0.020,
+        arpAttack: 0.12,
+        arpDur: 2.4,
+        arpRelease: 1.9,
+        arpSweep: 1.8,
+        padDur: 5,
+        padVol: 0.050,
+        padFilter: 320,
+        bassDur: 1.8,
+        bassOpen: 900,
+        bassClose: 140,
+        bassQ: 7,
+        kickHz: 58,
+        kickVol: 0.58,
+        drive: 1.5,
+        hatVol: 0
       }
     };
 
-    function noiseBuf(ac, seconds) {
+        function noiseBuf(ac, seconds) {
       const n = Math.floor(ac.sampleRate * seconds);
       const buf = ac.createBuffer(1, n, ac.sampleRate);
       const d = buf.getChannelData(0);
@@ -1463,6 +1852,11 @@
       const interval = 60 / th.bpm / 2;
 
       function arpNote(freq, t) {
+        const attack = th.arpAttack;
+        const dur = th.arpDur;
+        const rel = th.arpRelease;
+        const sweep = th.arpSweep;
+        const relStart = t + Math.max(attack + 0.05, dur - rel);
         for (const det of [0.996, 1.004]) {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
@@ -1472,15 +1866,16 @@
           f.type = "lowpass";
           f.Q.value = th.arpQ;
           f.frequency.setValueAtTime(th.arpOpen, t);
-          f.frequency.exponentialRampToValueAtTime(th.arpClose, t + 0.22);
+          f.frequency.exponentialRampToValueAtTime(Math.max(40, th.arpClose), t + sweep);
           g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(th.arpVol, t + 0.01);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+          g.gain.exponentialRampToValueAtTime(th.arpVol, t + attack);
+          g.gain.setValueAtTime(th.arpVol, relStart);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
           o.connect(f);
           f.connect(g);
           g.connect(arpBus);
           o.start(t);
-          o.stop(t + 0.3);
+          o.stop(t + dur);
         }
       }
 
@@ -1492,9 +1887,11 @@
           o.type = "sawtooth";
           o.frequency.value = chord[i] * (i === 0 ? 0.5 : 1);
           f.type = "lowpass";
-          f.frequency.value = currentTheme === "remix" ? 520 : 380;
+          f.frequency.value = th.padFilter;
           g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(currentTheme === "coast" ? 0.04 : 0.028, t + 0.4);
+          g.gain.exponentialRampToValueAtTime(th.padVol, t + 0.4);
+          const hold = Math.max(0.5, dur - 0.9);
+          g.gain.setValueAtTime(th.padVol, t + hold);
           g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
           o.connect(f);
           f.connect(g);
@@ -1519,19 +1916,19 @@
         f.frequency.exponentialRampToValueAtTime(th.bassClose, t + 0.55);
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + (currentTheme === "remix" ? 0.55 : 0.85));
+        g.gain.exponentialRampToValueAtTime(0.0001, t + th.bassDur);
         o.connect(f);
         f.connect(g);
         sub.connect(g);
         g.connect(master);
         o.start(t);
         sub.start(t);
-        o.stop(t + 0.9);
-        sub.stop(t + 0.9);
+        o.stop(t + th.bassDur + 0.05);
+        sub.stop(t + th.bassDur + 0.05);
       }
 
       function kick(t) {
-        tone(currentTheme === "remix" ? 70 : 64, 0.32, "sine", currentTheme === "remix" ? 0.7 : 0.6, t, master, 26, 160);
+        tone(th.kickHz, 0.32, "sine", th.kickVol, t, master, 26, 160);
       }
 
       function snare(t) {
@@ -1580,7 +1977,7 @@
         const bar = Math.floor(step / 8) % 4;
         const chord = th.chords[bar];
         const arp = [chord[0], chord[1], chord[2], chord[0] * 2, chord[2], chord[1], chord[0], chord[2]];
-        if (th.padOn.indexOf(s) >= 0) pad(chord, 2.5, t);
+        if (th.padOn.indexOf(s) >= 0) pad(chord, th.padDur, t);
         if (th.bassOn.indexOf(s) >= 0) bass(th.roots[bar], t);
         if (th.kick.indexOf(s) >= 0) kick(t);
         if (th.snare.indexOf(s) >= 0) snare(t);
@@ -1957,12 +2354,7 @@
       const inWorld = screen === "playStub" || screen === "pause";
       if (inWorld) {
         Look.drawPlay();
-        if (screen === "playStub") drawPlayChrome();
-        else {
-          drawPlayChrome();
-          hits = [];
-          drawPause();
-        }
+        if (screen === "pause") drawPause();
         return;
       }
       drawBackdrop();
