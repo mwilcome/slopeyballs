@@ -130,7 +130,7 @@
   const Buildings = (() => {
     const GROUND_Y = 560;
 
-    function pack(id, name, blurb, specs) {
+    function pack(id, name, blurb, specs, theme) {
       let x = 40;
       const buildings = specs.map(s => {
         const b = {
@@ -139,19 +139,21 @@
           h: s.h,
           roof: s.roof || "flat",
           peak: s.peak == null ? 36 : s.peak,
-          hue: s.hue
+          hue: s.hue,
+          kind: s.kind || null,
+          skew: s.skew == null ? 0.3 : s.skew
         };
         x += s.w + (s.gap == null ? 24 : s.gap);
         return b;
       });
       const last = buildings[buildings.length - 1];
       return {
-        id, name, blurb, groundY: GROUND_Y, buildings,
+        id, name, blurb, theme: theme || "nightcall", groundY: GROUND_Y, buildings,
         gate: { x: last.x + last.w * 0.5, building: last }
       };
     }
 
-    const BLOCKS = pack("blocks", "Blocks", "Gaps, drops, and a few tall ones. Don't fall.", [
+    const NEON = pack("neon", "Neon", "Neon lights cityscape, dont fall.", [
       { w: 280, h: 150, roof: "flat", gap: 80, hue: 250 },
       { w: 150, h: 145, roof: "flat", gap: 64, hue: 270 },
       { w: 160, h: 220, roof: "ramp-right", peak: 52, gap: 96, hue: 220 },
@@ -182,8 +184,23 @@
       { w: 170, h: 250, roof: "flat", gap: 48, hue: 262 }
     ]);
 
-    const catalog = [BLOCKS];
-    let active = BLOCKS;
+    const COAST = pack("coast", "Coast", "Synthwave beach. Don't drown.", [
+      { w: 260, h: 88, roof: "flat", kind: "pier", gap: 70, hue: 28 },
+      { w: 340, h: 24, roof: "dune", kind: "dune", peak: 54, skew: 0.26, gap: 96, hue: 38 },
+      { w: 180, h: 92, roof: "flat", kind: "pier", gap: 88, hue: 26 },
+      { w: 300, h: 22, roof: "dune", kind: "dune", peak: 44, skew: 0.72, gap: 76, hue: 36 },
+      { w: 110, h: 50, roof: "flat", kind: "rock", gap: 68, hue: 16 },
+      { w: 160, h: 140, roof: "ramp-left", kind: "cliff", peak: 36, gap: 68, hue: 22 },
+      { w: 150, h: 96, roof: "flat", kind: "pier", gap: 80, hue: 30 },
+      { w: 90, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 40 },
+      { w: 320, h: 24, roof: "dune", kind: "dune", peak: 50, skew: 0.3, gap: 90, hue: 38 },
+      { w: 190, h: 155, roof: "ramp-right", kind: "cliff", peak: 48, gap: 82, hue: 24 },
+      { w: 160, h: 90, roof: "flat", kind: "pier", gap: 72, hue: 28 },
+      { w: 280, h: 26, roof: "dune", kind: "dune", peak: 40, skew: 0.68, gap: 48, hue: 44 }
+    ], "coast");
+
+    const catalog = [NEON, COAST];
+    let active = NEON;
     let camX = 0;
 
     function listMaps() {
@@ -192,18 +209,31 @@
     function getMap(id) { return catalog.find(m => m.id === id) || null; }
 
     function load(id) {
-      active = getMap(id) || BLOCKS;
+      active = getMap(id) || NEON;
       camX = 0;
       return active;
     }
 
     function eaveY(b) { return active.groundY - b.h; }
 
+    function duneBump(t, skew) {
+      const a = Math.max(0.2, Math.min(0.8, skew || 0.3));
+      const crest = 0.07;
+      if (t <= 0 || t >= 1) return 0;
+      if (t < a - crest) return t / (a - crest);
+      if (t < a + crest) return 1;
+      const u = (t - a - crest) / (1 - a - crest);
+      return Math.max(0, 1 - u * u);
+    }
+
     function roofYOn(b, wx) {
       const local = wx - b.x;
       if (local < 0 || local > b.w) return null;
       const eave = eaveY(b);
       const peak = b.peak;
+      if (b.roof === "dune" || b.kind === "dune") {
+        return eave - peak * duneBump(local / b.w, b.skew);
+      }
       if (b.roof === "peak") {
         const mid = b.w / 2;
         const t = local < mid ? local / mid : (b.w - local) / mid;
@@ -256,6 +286,14 @@
     function roofPoly(b) {
       const eave = eaveY(b);
       const x0 = b.x, x1 = b.x + b.w, pk = b.peak;
+      if (b.roof === "dune" || b.kind === "dune") {
+        const pts = [];
+        for (let i = 0; i <= 12; i++) {
+          const u = i / 12;
+          pts.push([x0 + b.w * u, eave - pk * duneBump(u, b.skew)]);
+        }
+        return pts;
+      }
       if (b.roof === "peak") {
         return [[x0, eave], [x0 + b.w / 2, eave - pk], [x1, eave]];
       }
@@ -278,6 +316,8 @@
       groundY() { return active.groundY; },
       buildings() { return active.buildings; },
       camX() { return camX; },
+      theme() { return active.theme; },
+      id() { return active.id; },
       setCam
     };
   })();
@@ -596,6 +636,7 @@
   const Look = (() => {
     const ctx = Kernel.ctx;
     const BANDS = ["#fff6a8", "#ffe14a", "#ffb02e", "#ff7a3c", "#ff4da0", "#ff2d88", "#c42cff", "#6b1ad6"];
+    const BEACH_SUN = ["#fffbe0", "#ffe14a", "#ffb02e", "#ff7a18", "#ff4a00", "#e02440", "#8a1460", "#3a0a48"];
     const BALL_R = 22;
     const FACE = 'Impact, Haettenschweiler, "Arial Black", sans-serif';
 
@@ -708,6 +749,227 @@
       ctx.strokeStyle = "rgba(255,240,180,0.55)";
       ctx.lineWidth = 2;
       ctx.stroke();
+    }
+
+    function drawBeachSky(w, h) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#1a0628");
+      g.addColorStop(0.22, "#6b1238");
+      g.addColorStop(0.42, "#ff4a12");
+      g.addColorStop(0.58, "#ffb020");
+      g.addColorStop(0.72, "#ff7a3c");
+      g.addColorStop(1, "#3a0a22");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      const horizon = h * 0.38;
+      ctx.fillStyle = "#ffe8b0";
+      for (let i = 0; i < 50; i++) {
+        const sx = (i * 113) % w;
+        const sy = (i * 29) % Math.max(30, horizon - 20);
+        ctx.globalAlpha = 0.2 + (i % 4) * 0.1;
+        ctx.fillRect(sx, sy, 1, 1);
+      }
+      ctx.globalAlpha = 1;
+
+      const sunX = w * 0.5, sunY = horizon - 6, sunR = Math.min(130, h * 0.18);
+      const glow = ctx.createRadialGradient(sunX, sunY, 8, sunX, sunY, sunR * 1.9);
+      glow.addColorStop(0, "rgba(255,220,80,0.7)");
+      glow.addColorStop(0.45, "rgba(255,80,20,0.28)");
+      glow.addColorStop(1, "rgba(255,40,80,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, sunR * 1.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+      ctx.clip();
+      const hh = sunR * 2;
+      for (let i = 0; i < BEACH_SUN.length; i++) {
+        ctx.fillStyle = BEACH_SUN[i];
+        ctx.fillRect(sunX - sunR - 1, sunY - sunR + (hh * i) / BEACH_SUN.length, sunR * 2 + 2, hh / BEACH_SUN.length + 1);
+      }
+      ctx.restore();
+    }
+
+    function drawWater(w, h, gy) {
+      const wg = ctx.createLinearGradient(0, gy, 0, h);
+      wg.addColorStop(0, "#4ec4d8");
+      wg.addColorStop(0.12, "#2a88b8");
+      wg.addColorStop(0.4, "#164a88");
+      wg.addColorStop(1, "#0a1838");
+      ctx.fillStyle = wg;
+      ctx.fillRect(0, gy, w, h - gy);
+
+      const cx = w * 0.5;
+      const shine = ctx.createLinearGradient(cx, gy, cx, gy + 90);
+      shine.addColorStop(0, "rgba(255,200,80,0.35)");
+      shine.addColorStop(1, "rgba(255,120,40,0)");
+      ctx.fillStyle = shine;
+      ctx.beginPath();
+      ctx.moveTo(cx - 70, gy);
+      ctx.lineTo(cx + 70, gy);
+      ctx.lineTo(cx + 18, gy + 88);
+      ctx.lineTo(cx - 18, gy + 88);
+      ctx.closePath();
+      ctx.fill();
+
+      const t = performance.now() / 900;
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 9; i++) {
+        const y = gy + 8 + i * ((h - gy) / 12);
+        ctx.strokeStyle = i < 3 ? "rgba(255,210,120,0.28)" : "rgba(80,200,255,0.18)";
+        ctx.globalAlpha = 0.35 + (i % 3) * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x <= w; x += 16) {
+          ctx.lineTo(x, y + Math.sin(x * 0.025 + t + i) * (3 + i * 0.35));
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawShore(w, gy) {
+      const sg = ctx.createLinearGradient(0, gy - 10, 0, gy + 10);
+      sg.addColorStop(0, "rgba(255,190,90,0)");
+      sg.addColorStop(0.45, "rgba(232,150,60,0.7)");
+      sg.addColorStop(0.7, "rgba(255,230,180,0.9)");
+      sg.addColorStop(1, "rgba(255,255,255,0.35)");
+      ctx.fillStyle = sg;
+      ctx.fillRect(0, gy - 8, w, 18);
+      ctx.fillStyle = "rgba(255,250,230,0.7)";
+      ctx.fillRect(0, gy - 1, w, 3);
+    }
+
+    function drawPalm(x, y, scale, flip) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(flip ? -scale : scale, scale);
+      ctx.fillStyle = "#2a1020";
+      ctx.fillRect(-3, -52, 6, 52);
+      ctx.fillStyle = "#1a3a18";
+      for (let i = 0; i < 5; i++) {
+        const a = -1.15 + i * 0.55;
+        ctx.beginPath();
+        ctx.moveTo(0, -50);
+        ctx.quadraticCurveTo(Math.cos(a) * 38, -50 + Math.sin(a) * 10, Math.cos(a) * 44, -38 + Math.sin(a) * 22);
+        ctx.quadraticCurveTo(Math.cos(a) * 16, -48, 0, -50);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function fillRoofMass(b, cam, gy) {
+      const poly = Buildings.roofPoly(b);
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
+      for (let p = 1; p < poly.length; p++) ctx.lineTo(poly[p][0] - cam, Buildings.screenY(poly[p][1]));
+      ctx.lineTo(b.x + b.w - cam, gy);
+      ctx.lineTo(b.x - cam, gy);
+      ctx.closePath();
+    }
+
+    function drawCoastPad(b, cam) {
+      const sx = b.x - cam;
+      const eave = Buildings.eaveY(b);
+      const top = Buildings.screenY(eave);
+      const gy = Buildings.screenY(Buildings.groundY());
+      const kind = b.kind || (b.roof === "flat" ? "pier" : "dune");
+      const poly = Buildings.roofPoly(b);
+
+      if (kind === "pier") {
+        ctx.fillStyle = "#3a2214";
+        for (let x = sx + 10; x < sx + b.w - 6; x += 26) {
+          ctx.fillRect(x, top + 8, 5, gy - top);
+          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.beginPath();
+          ctx.ellipse(x + 2, gy, 9, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#3a2214";
+        }
+        ctx.fillStyle = "#8a5a28";
+        ctx.fillRect(sx, top - 4, b.w, 12);
+        ctx.fillStyle = "#c4843c";
+        for (let x = 0; x < b.w; x += 10) ctx.fillRect(sx + x, top - 4, 7, 12);
+        ctx.strokeStyle = "#ffd24a";
+        ctx.lineWidth = 2;
+        ctx.shadowColor = "#ff8a20";
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(sx, top);
+        ctx.lineTo(sx + b.w, top);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        return;
+      }
+
+      if (kind === "sand") {
+        const sg = ctx.createLinearGradient(sx, top, sx, gy);
+        sg.addColorStop(0, "#ffd56a");
+        sg.addColorStop(0.55, "#e09040");
+        sg.addColorStop(1, "#c06030");
+        ctx.fillStyle = sg;
+        ctx.fillRect(sx, top, b.w, gy - top);
+        ctx.fillStyle = "rgba(180,80,40,0.35)";
+        ctx.fillRect(sx, gy - 10, b.w, 10);
+        ctx.strokeStyle = "#ffe08a";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx, top);
+        ctx.lineTo(sx + b.w, top);
+        ctx.stroke();
+        return;
+      }
+
+      fillRoofMass(b, cam, gy);
+      if (kind === "cliff") {
+        const cg = ctx.createLinearGradient(sx, top, sx, gy);
+        cg.addColorStop(0, "#e07030");
+        cg.addColorStop(0.45, "#c04018");
+        cg.addColorStop(1, "#6a1810");
+        ctx.fillStyle = cg;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,200,80,0.25)";
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 6; i++) {
+          const y = top + (gy - top) * (i / 6);
+          ctx.beginPath();
+          ctx.moveTo(sx + 4, y);
+          ctx.lineTo(sx + b.w - 4, y + 3);
+          ctx.stroke();
+        }
+      } else if (kind === "rock") {
+        ctx.fillStyle = "#5a3028";
+        ctx.fill();
+        ctx.fillStyle = "#7a4430";
+        ctx.beginPath();
+        ctx.moveTo(sx + 8, gy);
+        ctx.lineTo(sx + b.w * 0.3, top + 10);
+        ctx.lineTo(sx + b.w * 0.6, gy);
+        ctx.fill();
+      } else {
+        const sg = ctx.createLinearGradient(sx, top - 40, sx, gy);
+        sg.addColorStop(0, "#ffe08a");
+        sg.addColorStop(0.4, "#f0a030");
+        sg.addColorStop(0.75, "#d07028");
+        sg.addColorStop(1, "#a04820");
+        ctx.fillStyle = sg;
+        ctx.fill();
+        ctx.fillStyle = "rgba(160,60,30,0.35)";
+        ctx.fillRect(sx, gy - 14, b.w, 14);
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
+      for (let p = 1; p < poly.length; p++) ctx.lineTo(poly[p][0] - cam, Buildings.screenY(poly[p][1]));
+      ctx.strokeStyle = kind === "rock" ? "#ffb070" : "#ffe08a";
+      ctx.shadowColor = "#ff6a20";
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     function drawBall(snap, cam) {
@@ -868,17 +1130,34 @@
       const { w, h } = Kernel.view;
       const cam = Buildings.camX();
       const snap = Ball.snapshot();
-      drawSky(w, h);
+      const beach = Buildings.theme() === "coast";
+      if (beach) drawBeachSky(w, h);
+      else drawSky(w, h);
       const gy = Buildings.screenY(Buildings.groundY());
-      ctx.fillStyle = "#0a0614";
-      ctx.fillRect(0, gy, w, h);
-      drawGridFloor(gy);
+      if (beach) {
+        drawWater(w, h, gy);
+        drawShore(w, gy);
+      } else {
+        ctx.fillStyle = "#0a0614";
+        ctx.fillRect(0, gy, w, h);
+        drawGridFloor(gy);
+      }
 
       const list = Buildings.buildings();
+      if (beach) {
+        for (let i = 0; i < list.length; i++) {
+          const b = list[i];
+          if (b.kind !== "pier") continue;
+          if (b.x + b.w < cam - 40 || b.x > cam + w + 40) continue;
+          drawPalm(b.x - cam - 16, gy, 1.05, false);
+          drawPalm(b.x + b.w - cam + 14, gy, 0.9, true);
+        }
+      }
       for (let i = 0; i < list.length; i++) {
         const b = list[i];
         if (b.x + b.w < cam - 30 || b.x > cam + w + 30) continue;
-        drawBuilding(b, cam);
+        if (beach) drawCoastPad(b, cam);
+        else drawBuilding(b, cam);
       }
 
       drawBall(snap, cam);
@@ -923,13 +1202,35 @@
       const x = d.x - cam;
       const y = Buildings.screenY(d.y);
       const roof = Buildings.screenY(g.y);
-      ctx.fillStyle = "#2a1458";
-      ctx.strokeStyle = "#ffd24a";
-      ctx.lineWidth = 3;
-      ctx.fillRect(x - 40, y, 10, roof - y);
-      ctx.fillRect(x + 30, y, 10, roof - y);
-      ctx.strokeRect(x - 40, y, 10, roof - y);
-      ctx.strokeRect(x + 30, y, 10, roof - y);
+      const beach = Buildings.theme() === "coast";
+      if (beach) {
+        ctx.fillStyle = "#4a2818";
+        ctx.fillRect(x - 38, roof - 8, 8, 8);
+        ctx.fillRect(x + 30, roof - 8, 8, 8);
+        ctx.fillStyle = "#c4843c";
+        ctx.fillRect(x - 36, y + 10, 6, roof - y - 10);
+        ctx.fillRect(x + 32, y + 10, 6, roof - y - 10);
+        ctx.fillStyle = "#e07030";
+        ctx.fillRect(x - 44, y + 8, 90, 10);
+        ctx.fillStyle = "#ffb020";
+        ctx.beginPath();
+        ctx.moveTo(x - 48, y + 8);
+        ctx.lineTo(x, y - 10);
+        ctx.lineTo(x + 48, y + 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "#ffe08a";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = "#2a1458";
+        ctx.strokeStyle = "#ffd24a";
+        ctx.lineWidth = 3;
+        ctx.fillRect(x - 40, y, 10, roof - y);
+        ctx.fillRect(x + 30, y, 10, roof - y);
+        ctx.strokeRect(x - 40, y, 10, roof - y);
+        ctx.strokeRect(x + 30, y, 10, roof - y);
+      }
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, d.r, 0, Math.PI * 2);
@@ -962,6 +1263,85 @@
     let ctx = null;
     let music = null;
     let loops = null;
+    let currentTheme = "nightcall";
+
+    const THEMES = {
+      nightcall: {
+        bpm: 91,
+        chords: [
+          [220.00, 261.63, 329.63],
+          [246.94, 196.00, 293.66],
+          [174.61, 220.00, 261.63],
+          [146.83, 174.61, 220.00]
+        ],
+        roots: [55.00, 61.74, 43.65, 36.71],
+        kick: [0, 4],
+        snare: [2, 6],
+        hat: [],
+        bassOn: [0],
+        padOn: [0],
+        arpEvery: 1,
+        arpOpen: 2100,
+        arpClose: 520,
+        arpQ: 4,
+        arpVol: 0.055,
+        bassOpen: 1100,
+        bassClose: 160,
+        bassQ: 7,
+        drive: 1.6,
+        hatVol: 0
+      },
+      remix: {
+        bpm: 122,
+        chords: [
+          [220.00, 261.63, 329.63],
+          [246.94, 196.00, 293.66],
+          [174.61, 220.00, 261.63],
+          [146.83, 174.61, 220.00]
+        ],
+        roots: [55.00, 61.74, 43.65, 36.71],
+        kick: [0, 2, 4, 6],
+        snare: [2, 6],
+        hat: [1, 3, 5, 7],
+        bassOn: [0, 4],
+        padOn: [0],
+        arpEvery: 1,
+        arpOpen: 3200,
+        arpClose: 900,
+        arpQ: 3.2,
+        arpVol: 0.05,
+        bassOpen: 1400,
+        bassClose: 220,
+        bassQ: 5,
+        drive: 2.1,
+        hatVol: 0.045
+      },
+      coast: {
+        bpm: 104,
+        chords: [
+          [174.61, 220.00, 261.63],
+          [196.00, 246.94, 293.66],
+          [164.81, 220.00, 246.94],
+          [146.83, 196.00, 220.00]
+        ],
+        roots: [43.65, 49.00, 41.20, 36.71],
+        kick: [0, 4],
+        snare: [2, 6],
+        hat: [1, 5],
+        bassOn: [0],
+        padOn: [0],
+        arpEvery: 2,
+        arpOpen: 1600,
+        arpClose: 420,
+        arpQ: 5.5,
+        arpVol: 0.042,
+        bassOpen: 900,
+        bassClose: 140,
+        bassQ: 8,
+        drive: 1.25,
+        hatVol: 0.028
+      }
+    };
 
     function noiseBuf(ac, seconds) {
       const n = Math.floor(ac.sampleRate * seconds);
@@ -1062,6 +1442,7 @@
 
     function startMusic() {
       if (music || !ctx || Kernel.isMute()) return;
+      const th = THEMES[currentTheme] || THEMES.nightcall;
       const master = ctx.createGain();
       master.gain.value = 0.12;
       master.connect(ctx.destination);
@@ -1069,7 +1450,7 @@
       const curve = new Float32Array(256);
       for (let i = 0; i < 256; i++) {
         const x = (i / 255) * 2 - 1;
-        curve[i] = Math.tanh(x * 1.6);
+        curve[i] = Math.tanh(x * th.drive);
       }
       drive.curve = curve;
       drive.oversample = "2x";
@@ -1079,14 +1460,7 @@
       drive.connect(master);
       const nb = noiseBuf(ctx, 0.35);
       let step = 0;
-      const interval = 60 / 91 / 2;
-      const chords = [
-        [220.00, 261.63, 329.63],
-        [246.94, 196.00, 293.66],
-        [174.61, 220.00, 261.63],
-        [146.83, 174.61, 220.00]
-      ];
-      const roots = [55.00, 61.74, 43.65, 36.71];
+      const interval = 60 / th.bpm / 2;
 
       function arpNote(freq, t) {
         for (const det of [0.996, 1.004]) {
@@ -1096,11 +1470,11 @@
           o.type = "sawtooth";
           o.frequency.value = freq * det;
           f.type = "lowpass";
-          f.Q.value = 4;
-          f.frequency.setValueAtTime(2100, t);
-          f.frequency.exponentialRampToValueAtTime(520, t + 0.22);
+          f.Q.value = th.arpQ;
+          f.frequency.setValueAtTime(th.arpOpen, t);
+          f.frequency.exponentialRampToValueAtTime(th.arpClose, t + 0.22);
           g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(0.055, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(th.arpVol, t + 0.01);
           g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
           o.connect(f);
           f.connect(g);
@@ -1118,9 +1492,9 @@
           o.type = "sawtooth";
           o.frequency.value = chord[i] * (i === 0 ? 0.5 : 1);
           f.type = "lowpass";
-          f.frequency.value = 380;
+          f.frequency.value = currentTheme === "remix" ? 520 : 380;
           g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(0.028, t + 0.4);
+          g.gain.exponentialRampToValueAtTime(currentTheme === "coast" ? 0.04 : 0.028, t + 0.4);
           g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
           o.connect(f);
           f.connect(g);
@@ -1140,12 +1514,12 @@
         o.frequency.value = freq;
         sub.frequency.value = freq;
         f.type = "lowpass";
-        f.Q.value = 7;
-        f.frequency.setValueAtTime(1100, t);
-        f.frequency.exponentialRampToValueAtTime(160, t + 0.55);
+        f.Q.value = th.bassQ;
+        f.frequency.setValueAtTime(th.bassOpen, t);
+        f.frequency.exponentialRampToValueAtTime(th.bassClose, t + 0.55);
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + (currentTheme === "remix" ? 0.55 : 0.85));
         o.connect(f);
         f.connect(g);
         sub.connect(g);
@@ -1157,7 +1531,7 @@
       }
 
       function kick(t) {
-        tone(64, 0.32, "sine", 0.6, t, master, 26, 160);
+        tone(currentTheme === "remix" ? 70 : 64, 0.32, "sine", currentTheme === "remix" ? 0.7 : 0.6, t, master, 26, 160);
       }
 
       function snare(t) {
@@ -1183,21 +1557,35 @@
         tone(180, 0.08, "triangle", 0.04, t, master, 90, 700);
       }
 
+      function hat(t) {
+        const src = ctx.createBufferSource();
+        const g = ctx.createGain();
+        const f = ctx.createBiquadFilter();
+        src.buffer = nb;
+        f.type = "highpass";
+        f.frequency.value = 7500;
+        g.gain.setValueAtTime(th.hatVol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        src.connect(f);
+        f.connect(g);
+        g.connect(master);
+        src.start(t);
+        src.stop(t + 0.06);
+      }
+
       const id = setInterval(() => {
         if (Kernel.isMute() || !ctx) return;
         const t = ctx.currentTime + 0.03;
         const s = step % 8;
         const bar = Math.floor(step / 8) % 4;
-        const chord = chords[bar];
+        const chord = th.chords[bar];
         const arp = [chord[0], chord[1], chord[2], chord[0] * 2, chord[2], chord[1], chord[0], chord[2]];
-        if (s === 0) {
-          pad(chord, 2.5, t);
-          bass(roots[bar], t);
-          kick(t);
-        }
-        if (s === 4) kick(t);
-        if (s === 2 || s === 6) snare(t);
-        arpNote(arp[s], t);
+        if (th.padOn.indexOf(s) >= 0) pad(chord, 2.5, t);
+        if (th.bassOn.indexOf(s) >= 0) bass(th.roots[bar], t);
+        if (th.kick.indexOf(s) >= 0) kick(t);
+        if (th.snare.indexOf(s) >= 0) snare(t);
+        if (th.hat.indexOf(s) >= 0) hat(t);
+        if (s % th.arpEvery === 0) arpNote(arp[s], t);
         step++;
       }, interval * 1000);
       music = {
@@ -1207,6 +1595,14 @@
           music = null;
         }
       };
+    }
+
+    function setTheme(id) {
+      if (!THEMES[id]) id = "nightcall";
+      if (id === currentTheme && music) return;
+      currentTheme = id;
+      if (music) music.stop();
+      if (ctx && !Kernel.isMute()) startMusic();
     }
 
     function thump(start, end, dur, vol) {
@@ -1258,7 +1654,7 @@
       tone(440, 0.45, "triangle", 0.035, t0 + 0.08, ac.destination, null, 1100);
     });
 
-    return { ensure, update };
+    return { ensure, update, setTheme };
   })();
 
   /* ── Menus ──────────────────────────────────────────────── */
@@ -1268,13 +1664,19 @@
     const FACE = 'Impact, Haettenschweiler, "Arial Black", sans-serif';
 
     let screen = "main";
-    let pickedMap = "blocks";
+    let pickedMap = "neon";
     let hits = [];
     let lastPointer = null;
     let lastRun = { distance: 0, earned: 0, finished: false };
 
     function go(name) {
       screen = name;
+      if (name === "main" || name === "maps" || name === "upgrade" || name === "resetConfirm") {
+        AudioFx.setTheme("nightcall");
+      } else if (name === "playStub" || name === "pause") {
+        const m = Buildings.getMap(pickedMap);
+        AudioFx.setTheme((m && m.theme) || "nightcall");
+      }
       Kernel.bus.emit("screen", name);
     }
 
@@ -1544,8 +1946,9 @@
         button("buy:" + id, bx, by, bw, 56, `${label}  Lv ${lv}`, sub, false);
         by += 64;
       }
-      button("restart", bx, by + 8, bw, 56, "Restart map", "Keep these upgrades", true);
-      button("menu", bx, by + 74, bw, 56, "Main menu", "", false);
+      button("restart", bx, by + 8, bw, 56, "Continue map", "Keep these upgrades", true);
+      button("newmap", bx, by + 74, bw, 56, "New map", "Pick a different city", false);
+      button("menu", bx, by + 140, bw, 56, "Main menu", "", false);
     }
 
     function draw() {
@@ -1595,6 +1998,7 @@
         Ball.spawn();
         go("playStub");
       }
+      else if (id === "newmap") go("maps");
       else if (id === "menu") go("main");
       else if (id.startsWith("buy:")) Progression.buy(id.slice(4));
     }
