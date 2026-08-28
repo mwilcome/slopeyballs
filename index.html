@@ -136,12 +136,16 @@
         const b = {
           x,
           w: s.w,
-          h: s.h,
+          h: s.h != null ? s.h : Math.max(s.hL || 0, s.hR || 0),
+          hL: s.hL,
+          hR: s.hR,
+          ease: s.ease || null,
           roof: s.roof || "flat",
           peak: s.peak == null ? 36 : s.peak,
           hue: s.hue,
           kind: s.kind || null,
-          skew: s.skew == null ? 0.3 : s.skew
+          skew: s.skew == null ? 0.3 : s.skew,
+          gap: s.gap == null ? 24 : s.gap
         };
         x += s.w + (s.gap == null ? 24 : s.gap);
         return b;
@@ -154,280 +158,270 @@
     }
 
     const NEON = pack("neon", "Neon", "Neon lights cityscape, dont fall.", [
-      { w: 216, h: 152, roof: "flat", gap: 56, hue: 248 },
-      { w: 146, h: 146, roof: "flat", gap: 44, hue: 262 },
-      { w: 168, h: 156, roof: "peak", peak: 28, gap: 50, hue: 226 },
-      { w: 128, h: 144, roof: "flat", gap: 40, hue: 278 },
-      { w: 176, h: 154, roof: "flat", gap: 62, hue: 238 },
-      { w: 118, h: 142, roof: "ramp-right", peak: 22, gap: 42, hue: 292 },
-      { w: 158, h: 150, roof: "flat", gap: 54, hue: 214 },
-      { w: 182, h: 158, roof: "flat", gap: 48, hue: 270 },
-      { w: 136, h: 166, roof: "flat", gap: 46, hue: 242 },
-      { w: 124, h: 176, roof: "flat", gap: 50, hue: 256 },
-      { w: 148, h: 186, roof: "ramp-right", peak: 26, gap: 42, hue: 220 },
-      { w: 132, h: 196, roof: "flat", gap: 54, hue: 284 },
-      { w: 120, h: 204, roof: "flat", gap: 46, hue: 232 },
-      { w: 152, h: 212, roof: "peak", peak: 32, gap: 58, hue: 268 },
-      { w: 140, h: 218, roof: "flat", gap: 44, hue: 296 },
-      { w: 164, h: 224, roof: "flat", gap: 154, hue: 250 },
-      { w: 212, h: 218, roof: "flat", gap: 52, hue: 236 },
-      { w: 174, h: 210, roof: "flat", gap: 48, hue: 274 },
-      { w: 200, h: 204, roof: "ramp-left", peak: 24, gap: 60, hue: 218 },
-      { w: 158, h: 198, roof: "flat", gap: 42, hue: 288 },
-      { w: 228, h: 192, roof: "flat", gap: 64, hue: 244 },
-      { w: 186, h: 168, roof: "flat", gap: 50, hue: 260 },
-      { w: 176, h: 128, roof: "flat", gap: 44, hue: 230 },
-      { w: 176, h: 108, roof: "flat", gap: 58, hue: 276 },
-      { w: 158, h: 112, roof: "flat", gap: 40, hue: 246 },
-      { w: 212, h: 118, roof: "peak", peak: 22, gap: 54, hue: 212 },
-      { w: 160, h: 110, roof: "flat", gap: 46, hue: 294 },
-      { w: 198, h: 116, roof: "flat", gap: 62, hue: 254 },
-      { w: 140, h: 108, roof: "ramp-right", peak: 18, gap: 38, hue: 228 },
-      { w: 220, h: 122, roof: "flat", gap: 50, hue: 266 },
-      { w: 180, h: 114, roof: "flat", gap: 56, hue: 240 },
-      { w: 178, h: 120, roof: "flat", gap: 42, hue: 282 },
-      { w: 198, h: 126, roof: "peak", peak: 26, gap: 48, hue: 216 },
-      { w: 152, h: 118, roof: "flat", gap: 64, hue: 272 },
-      { w: 196, h: 124, roof: "ramp-left", peak: 20, gap: 46, hue: 234 },
-      { w: 214, h: 130, roof: "flat", gap: 52, hue: 258 },
-      { w: 202, h: 158, roof: "ramp-right", peak: 36, gap: 44, hue: 222 },
-      { w: 192, h: 196, roof: "ramp-right", peak: 40, gap: 50, hue: 286 },
-      { w: 206, h: 236, roof: "peak", peak: 44, gap: 42, hue: 248 },
-      { w: 176, h: 274, roof: "ramp-right", peak: 38, gap: 56, hue: 210 },
-      { w: 206, h: 312, roof: "flat", gap: 48, hue: 264 },
-      { w: 218, h: 348, roof: "peak", peak: 46, gap: 40, hue: 298 },
-      { w: 174, h: 382, roof: "ramp-right", peak: 42, gap: 54, hue: 236 },
-      { w: 210, h: 412, roof: "flat", gap: 46, hue: 252 },
-      { w: 186, h: 438, roof: "peak", peak: 50, gap: 58, hue: 274 },
-      { w: 238, h: 456, roof: "flat", gap: 44, hue: 218 },
-      { w: 162, h: 448, roof: "ramp-left", peak: 34, gap: 50, hue: 290 },
-      { w: 216, h: 460, roof: "peak", peak: 48, gap: 42, hue: 244 },
-      { w: 194, h: 442, roof: "flat", gap: 60, hue: 268 },
-      { w: 178, h: 454, roof: "ramp-right", peak: 36, gap: 48, hue: 224 },
-      { w: 240, h: 446, roof: "flat", gap: 52, hue: 280 },
-      { w: 210, h: 438, roof: "peak", peak: 44, gap: 196, hue: 232 },
-      { w: 226, h: 422, roof: "flat", gap: 50, hue: 256 },
-      { w: 184, h: 368, roof: "ramp-left", peak: 30, gap: 46, hue: 214 },
-      { w: 200, h: 312, roof: "flat", gap: 58, hue: 276 },
-      { w: 168, h: 268, roof: "flat", gap: 42, hue: 240 },
-      { w: 216, h: 248, roof: "peak", peak: 28, gap: 54, hue: 292 },
-      { w: 190, h: 236, roof: "flat", gap: 48, hue: 228 },
-      { w: 218, h: 232, roof: "flat", gap: 60, hue: 262 },
-      { w: 268, h: 228, roof: "flat", gap: 50, hue: 246 },
-      { w: 200, h: 234, roof: "flat", gap: 44, hue: 270 },
-      { w: 242, h: 226, roof: "peak", peak: 24, gap: 56, hue: 218 },
-      { w: 184, h: 232, roof: "flat", gap: 40, hue: 284 },
-      { w: 250, h: 238, roof: "ramp-right", peak: 22, gap: 52, hue: 234 },
-      { w: 216, h: 224, roof: "flat", gap: 46, hue: 258 },
-      { w: 244, h: 230, roof: "flat", gap: 62, hue: 210 },
-      { w: 186, h: 236, roof: "flat", gap: 38, hue: 296 },
-      { w: 268, h: 222, roof: "peak", peak: 30, gap: 54, hue: 250 },
-      { w: 208, h: 228, roof: "flat", gap: 48, hue: 272 },
-      { w: 230, h: 234, roof: "ramp-left", peak: 20, gap: 42, hue: 226 },
-      { w: 242, h: 230, roof: "flat", gap: 58, hue: 264 },
-      { w: 182, h: 226, roof: "flat", gap: 44, hue: 242 },
-      { w: 268, h: 238, roof: "flat", gap: 50, hue: 288 },
-      { w: 196, h: 232, roof: "peak", peak: 26, gap: 46, hue: 216 },
-      { w: 238, h: 224, roof: "flat", gap: 64, hue: 254 },
-      { w: 214, h: 230, roof: "flat", gap: 40, hue: 278 },
-      { w: 252, h: 236, roof: "ramp-right", peak: 24, gap: 52, hue: 230 },
-      { w: 192, h: 228, roof: "flat", gap: 56, hue: 266 },
-      { w: 226, h: 234, roof: "flat", gap: 48, hue: 244 },
-      { w: 240, h: 222, roof: "peak", peak: 28, gap: 42, hue: 294 },
-      { w: 210, h: 228, roof: "flat", gap: 60, hue: 220 },
-      { w: 184, h: 196, roof: "flat", gap: 50, hue: 252 },
-      { w: 172, h: 154, roof: "flat", gap: 44, hue: 276 },
-      { w: 174, h: 118, roof: "flat", gap: 56, hue: 236 },
-      { w: 158, h: 122, roof: "flat", gap: 40, hue: 260 },
-      { w: 210, h: 128, roof: "peak", peak: 22, gap: 52, hue: 212 },
-      { w: 170, h: 116, roof: "flat", gap: 46, hue: 290 },
-      { w: 196, h: 124, roof: "flat", gap: 62, hue: 248 },
-      { w: 154, h: 112, roof: "ramp-left", peak: 18, gap: 38, hue: 224 },
-      { w: 220, h: 130, roof: "flat", gap: 54, hue: 268 },
-      { w: 178, h: 118, roof: "flat", gap: 48, hue: 240 },
-      { w: 198, h: 126, roof: "peak", peak: 24, gap: 44, hue: 282 },
-      { w: 146, h: 120, roof: "flat", gap: 58, hue: 216 },
-      { w: 212, h: 132, roof: "ramp-right", peak: 20, gap: 50, hue: 256 },
-      { w: 184, h: 124, roof: "flat", gap: 46, hue: 274 },
-      { w: 176, h: 148, roof: "flat", gap: 44, hue: 232 },
-      { w: 196, h: 176, roof: "ramp-right", peak: 32, gap: 50, hue: 264 },
-      { w: 164, h: 208, roof: "flat", gap: 42, hue: 246 },
-      { w: 206, h: 244, roof: "peak", peak: 38, gap: 56, hue: 218 },
-      { w: 186, h: 278, roof: "ramp-right", peak: 40, gap: 48, hue: 286 },
-      { w: 220, h: 312, roof: "flat", gap: 46, hue: 238 },
-      { w: 168, h: 346, roof: "ramp-right", peak: 36, gap: 54, hue: 270 },
-      { w: 208, h: 374, roof: "peak", peak: 44, gap: 40, hue: 222 },
-      { w: 224, h: 398, roof: "flat", gap: 52, hue: 254 },
-      { w: 178, h: 418, roof: "ramp-left", peak: 30, gap: 44, hue: 298 },
-      { w: 218, h: 436, roof: "flat", gap: 58, hue: 244 },
-      { w: 184, h: 448, roof: "peak", peak: 46, gap: 50, hue: 212 },
-      { w: 220, h: 456, roof: "flat", gap: 42, hue: 276 },
-      { w: 172, h: 442, roof: "ramp-right", peak: 34, gap: 60, hue: 228 },
-      { w: 234, h: 450, roof: "flat", gap: 48, hue: 260 },
-      { w: 200, h: 438, roof: "peak", peak: 42, gap: 208, hue: 240 },
-      { w: 272, h: 424, roof: "flat", gap: 40, hue: 252 },
+      { w: 248, h: 168, roof: "flat", kind: "slab", gap: 52, hue: 248 },
+      { w: 96, h: 292, roof: "flat", kind: "tower", gap: 44, hue: 262 },
+      { w: 176, h: 154, roof: "peak", kind: "spire", peak: 48, gap: 50, hue: 226 },
+      { w: 210, h: 118, roof: "flat", kind: "block", gap: 40, hue: 278 },
+      { w: 132, h: 206, roof: "ramp-right", kind: "stack", peak: 28, gap: 58, hue: 238 },
+      { w: 88, h: 338, roof: "flat", kind: "tower", gap: 42, hue: 292 },
+      { w: 264, h: 142, roof: "flat", kind: "slab", gap: 54, hue: 214 },
+      { w: 154, h: 188, roof: "peak", kind: "spire", peak: 36, gap: 48, hue: 270 },
+      { w: 118, h: 224, roof: "flat", kind: "stack", gap: 46, hue: 242 },
+      { w: 198, h: 136, roof: "ramp-left", kind: "block", peak: 22, gap: 50, hue: 256 },
+      { w: 92, h: 268, roof: "flat", kind: "tower", gap: 42, hue: 220 },
+      { w: 230, h: 162, roof: "peak", kind: "spire", peak: 42, gap: 54, hue: 284 },
+      { w: 140, h: 198, roof: "flat", kind: "block", gap: 46, hue: 232 },
+      { w: 186, h: 124, roof: "ramp-right", kind: "slab", peak: 18, gap: 58, hue: 268 },
+      { w: 108, h: 246, roof: "flat", kind: "stack", gap: 44, hue: 296 },
+      { w: 172, h: 214, roof: "flat", kind: "block", gap: 156, hue: 250 },
+      { w: 220, h: 198, roof: "peak", kind: "spire", peak: 34, gap: 52, hue: 236 },
+      { w: 84, h: 320, roof: "flat", kind: "tower", gap: 48, hue: 274 },
+      { w: 256, h: 148, roof: "flat", kind: "slab", gap: 60, hue: 218 },
+      { w: 146, h: 186, roof: "ramp-left", kind: "stack", peak: 26, gap: 42, hue: 288 },
+      { w: 194, h: 132, roof: "flat", kind: "block", gap: 64, hue: 244 },
+      { w: 124, h: 258, roof: "peak", kind: "spire", peak: 44, gap: 50, hue: 260 },
+      { w: 278, h: 110, roof: "flat", kind: "slab", gap: 44, hue: 230 },
+      { w: 102, h: 176, roof: "flat", kind: "tower", gap: 58, hue: 276 },
+      { w: 168, h: 204, roof: "ramp-right", kind: "block", peak: 30, gap: 40, hue: 246 },
+      { w: 212, h: 156, roof: "peak", kind: "spire", peak: 28, gap: 54, hue: 212 },
+      { w: 90, h: 288, roof: "flat", kind: "tower", gap: 46, hue: 294 },
+      { w: 238, h: 128, roof: "flat", kind: "slab", gap: 62, hue: 254 },
+      { w: 158, h: 192, roof: "ramp-left", kind: "stack", peak: 24, gap: 38, hue: 228 },
+      { w: 184, h: 168, roof: "flat", kind: "block", gap: 50, hue: 266 },
+      { w: 116, h: 236, roof: "peak", kind: "spire", peak: 40, gap: 56, hue: 240 },
+      { w: 204, h: 144, roof: "flat", kind: "slab", gap: 42, hue: 282 },
+      { w: 98, h: 312, roof: "flat", kind: "tower", gap: 48, hue: 216 },
+      { w: 226, h: 178, roof: "ramp-right", kind: "stack", peak: 32, gap: 64, hue: 272 },
+      { w: 150, h: 122, roof: "flat", kind: "block", gap: 46, hue: 234 },
+      { w: 190, h: 208, roof: "peak", kind: "spire", peak: 46, gap: 52, hue: 258 },
+      { w: 86, h: 264, roof: "flat", kind: "tower", gap: 44, hue: 222 },
+      { w: 248, h: 196, roof: "ramp-right", kind: "stack", peak: 38, gap: 50, hue: 286 },
+      { w: 164, h: 242, roof: "flat", kind: "block", gap: 42, hue: 248 },
+      { w: 112, h: 328, roof: "peak", kind: "spire", peak: 52, gap: 56, hue: 210 },
+      { w: 218, h: 274, roof: "flat", kind: "slab", gap: 48, hue: 264 },
+      { w: 136, h: 356, roof: "ramp-right", kind: "tower", peak: 24, gap: 40, hue: 298 },
+      { w: 182, h: 388, roof: "peak", kind: "spire", peak: 44, gap: 54, hue: 236 },
+      { w: 94, h: 420, roof: "flat", kind: "tower", gap: 46, hue: 252 },
+      { w: 206, h: 446, roof: "flat", kind: "stack", gap: 58, hue: 274 },
+      { w: 160, h: 458, roof: "peak", kind: "spire", peak: 48, gap: 44, hue: 218 },
+      { w: 128, h: 432, roof: "ramp-left", kind: "block", peak: 30, gap: 50, hue: 290 },
+      { w: 242, h: 454, roof: "flat", kind: "slab", gap: 42, hue: 244 },
+      { w: 100, h: 398, roof: "flat", kind: "tower", gap: 60, hue: 268 },
+      { w: 188, h: 440, roof: "ramp-right", kind: "stack", peak: 28, gap: 48, hue: 224 },
+      { w: 214, h: 428, roof: "peak", kind: "spire", peak: 40, gap: 52, hue: 280 },
+      { w: 174, h: 436, roof: "flat", kind: "block", gap: 196, hue: 232 },
+      { w: 232, h: 412, roof: "flat", kind: "slab", gap: 50, hue: 256 },
+      { w: 108, h: 348, roof: "ramp-left", kind: "tower", peak: 20, gap: 46, hue: 214 },
+      { w: 196, h: 286, roof: "peak", kind: "spire", peak: 36, gap: 58, hue: 276 },
+      { w: 148, h: 244, roof: "flat", kind: "stack", gap: 42, hue: 240 },
+      { w: 268, h: 198, roof: "flat", kind: "slab", gap: 54, hue: 292 },
+      { w: 122, h: 226, roof: "ramp-right", kind: "block", peak: 26, gap: 48, hue: 228 },
+      { w: 180, h: 238, roof: "peak", kind: "spire", peak: 32, gap: 60, hue: 262 },
+      { w: 254, h: 170, roof: "flat", kind: "slab", gap: 50, hue: 246 },
+      { w: 92, h: 304, roof: "flat", kind: "tower", gap: 44, hue: 270 },
+      { w: 208, h: 188, roof: "peak", kind: "spire", peak: 38, gap: 56, hue: 218 },
+      { w: 156, h: 214, roof: "flat", kind: "stack", gap: 40, hue: 284 },
+      { w: 224, h: 142, roof: "ramp-left", kind: "block", peak: 22, gap: 52, hue: 234 },
+      { w: 114, h: 256, roof: "flat", kind: "tower", gap: 46, hue: 258 },
+      { w: 192, h: 176, roof: "flat", kind: "slab", gap: 62, hue: 210 },
+      { w: 138, h: 228, roof: "peak", kind: "spire", peak: 44, gap: 38, hue: 296 },
+      { w: 246, h: 154, roof: "flat", kind: "block", gap: 54, hue: 250 },
+      { w: 88, h: 278, roof: "flat", kind: "tower", gap: 48, hue: 272 },
+      { w: 216, h: 202, roof: "ramp-right", kind: "stack", peak: 28, gap: 42, hue: 226 },
+      { w: 170, h: 164, roof: "flat", kind: "slab", gap: 58, hue: 264 },
+      { w: 104, h: 318, roof: "peak", kind: "spire", peak: 50, gap: 44, hue: 242 },
+      { w: 236, h: 138, roof: "flat", kind: "block", gap: 50, hue: 288 },
+      { w: 144, h: 190, roof: "ramp-left", kind: "stack", peak: 24, gap: 46, hue: 216 },
+      { w: 200, h: 222, roof: "flat", kind: "slab", gap: 64, hue: 254 },
+      { w: 96, h: 248, roof: "flat", kind: "tower", gap: 40, hue: 278 },
+      { w: 178, h: 158, roof: "peak", kind: "spire", peak: 30, gap: 52, hue: 230 },
+      { w: 260, h: 126, roof: "flat", kind: "block", gap: 56, hue: 266 },
+      { w: 128, h: 210, roof: "ramp-right", kind: "stack", peak: 20, gap: 48, hue: 244 },
+      { w: 188, h: 174, roof: "flat", kind: "slab", gap: 42, hue: 294 },
+      { w: 110, h: 266, roof: "peak", kind: "spire", peak: 36, gap: 60, hue: 220 },
+      { w: 222, h: 148, roof: "flat", kind: "block", gap: 50, hue: 252 },
+      { w: 152, h: 196, roof: "flat", kind: "stack", gap: 44, hue: 276 },
+      { w: 94, h: 134, roof: "flat", kind: "tower", gap: 56, hue: 236 },
+      { w: 240, h: 112, roof: "ramp-left", kind: "slab", peak: 16, gap: 40, hue: 260 },
+      { w: 166, h: 184, roof: "peak", kind: "spire", peak: 42, gap: 52, hue: 212 },
+      { w: 120, h: 228, roof: "flat", kind: "stack", gap: 46, hue: 290 },
+      { w: 206, h: 156, roof: "flat", kind: "block", gap: 62, hue: 248 },
+      { w: 86, h: 298, roof: "flat", kind: "tower", gap: 38, hue: 224 },
+      { w: 198, h: 172, roof: "ramp-right", kind: "slab", peak: 22, gap: 54, hue: 268 },
+      { w: 142, h: 140, roof: "flat", kind: "block", gap: 48, hue: 240 },
+      { w: 228, h: 208, roof: "peak", kind: "spire", peak: 38, gap: 44, hue: 282 },
+      { w: 104, h: 252, roof: "flat", kind: "tower", gap: 58, hue: 216 },
+      { w: 174, h: 186, roof: "ramp-left", kind: "stack", peak: 26, gap: 50, hue: 256 },
+      { w: 250, h: 118, roof: "flat", kind: "slab", gap: 46, hue: 274 },
+      { w: 130, h: 164, roof: "flat", kind: "block", gap: 44, hue: 232 },
+      { w: 186, h: 218, roof: "ramp-right", kind: "stack", peak: 34, gap: 50, hue: 264 },
+      { w: 98, h: 276, roof: "peak", kind: "spire", peak: 46, gap: 42, hue: 246 },
+      { w: 214, h: 244, roof: "flat", kind: "block", gap: 56, hue: 218 },
+      { w: 148, h: 302, roof: "ramp-right", kind: "tower", peak: 28, gap: 48, hue: 286 },
+      { w: 192, h: 336, roof: "flat", kind: "slab", gap: 46, hue: 238 },
+      { w: 116, h: 368, roof: "peak", kind: "spire", peak: 50, gap: 54, hue: 270 },
+      { w: 238, h: 394, roof: "flat", kind: "stack", gap: 40, hue: 222 },
+      { w: 88, h: 422, roof: "flat", kind: "tower", gap: 52, hue: 254 },
+      { w: 170, h: 438, roof: "ramp-left", kind: "block", peak: 32, gap: 44, hue: 298 },
+      { w: 204, h: 452, roof: "peak", kind: "spire", peak: 44, gap: 58, hue: 244 },
+      { w: 126, h: 446, roof: "flat", kind: "stack", gap: 50, hue: 212 },
+      { w: 220, h: 458, roof: "flat", kind: "slab", gap: 42, hue: 276 },
+      { w: 154, h: 432, roof: "ramp-right", kind: "block", peak: 24, gap: 60, hue: 228 },
+      { w: 196, h: 448, roof: "peak", kind: "spire", peak: 40, gap: 48, hue: 260 },
+      { w: 178, h: 436, roof: "flat", kind: "stack", gap: 208, hue: 240 },
+      { w: 260, h: 420, roof: "flat", kind: "slab", gap: 40, hue: 252 }
     ]);
 
     const COAST = pack("coast", "Coast", "Synthwave beach. Don't drown.", [
-      { w: 248, h: 90, roof: "flat", kind: "pier", gap: 52, hue: 28 },
-      { w: 186, h: 94, roof: "flat", kind: "pier", gap: 44, hue: 22 },
-      { w: 214, h: 88, roof: "flat", kind: "pier", gap: 58, hue: 32 },
-      { w: 162, h: 92, roof: "flat", kind: "pier", gap: 40, hue: 26 },
-      { w: 232, h: 96, roof: "flat", kind: "pier", gap: 50, hue: 30 },
-      { w: 198, h: 91, roof: "flat", kind: "pier", gap: 46, hue: 24 },
-      { w: 328, h: 24, roof: "dune", kind: "dune", peak: 52, skew: 0.28, gap: 54, hue: 38 },
-      { w: 292, h: 22, roof: "dune", kind: "dune", peak: 44, skew: 0.68, gap: 48, hue: 42 },
-      { w: 340, h: 26, roof: "dune", kind: "dune", peak: 50, skew: 0.32, gap: 60, hue: 36 },
-      { w: 286, h: 20, roof: "dune", kind: "dune", peak: 40, skew: 0.72, gap: 44, hue: 44 },
-      { w: 316, h: 24, roof: "dune", kind: "dune", peak: 48, skew: 0.24, gap: 52, hue: 34 },
+      { w: 188, h: 90, roof: "flat", kind: "pier", gap: 48, hue: 28 },
+      { w: 316, h: 24, roof: "dune", kind: "dune", peak: 52, skew: 0.28, gap: 44, hue: 38 },
+      { w: 108, h: 52, roof: "flat", kind: "rock", gap: 40, hue: 16 },
+      { w: 236, h: 94, roof: "flat", kind: "pier", gap: 56, hue: 22 },
+      { w: 92, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 40 },
+      { w: 328, h: 22, roof: "dune", kind: "dune", peak: 44, skew: 0.68, gap: 50, hue: 42 },
+      { w: 164, h: 118, roof: "ramp-right", kind: "cliff", peak: 40, gap: 46, hue: 22 },
+      { w: 210, h: 88, roof: "flat", kind: "pier", gap: 54, hue: 32 },
+      { w: 286, h: 26, roof: "dune", kind: "dune", peak: 50, skew: 0.32, gap: 42, hue: 36 },
+      { w: 84, h: 20, roof: "flat", kind: "sand", gap: 8, hue: 44 },
+      { w: 142, h: 48, roof: "flat", kind: "rock", gap: 50, hue: 18 },
       { w: 304, h: 22, roof: "dune", kind: "dune", peak: 54, skew: 0.62, gap: 156, hue: 40 },
-      { w: 202, h: 90, roof: "flat", kind: "pier", gap: 46, hue: 28 },
-      { w: 100, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 40 },
-      { w: 234, h: 88, roof: "flat", kind: "pier", gap: 54, hue: 26 },
-      { w: 174, h: 94, roof: "flat", kind: "pier", gap: 48, hue: 32 },
-      { w: 210, h: 92, roof: "flat", kind: "pier", gap: 50, hue: 22 },
-      { w: 120, h: 48, roof: "flat", kind: "rock", gap: 42, hue: 16 },
-      { w: 222, h: 88, roof: "flat", kind: "pier", gap: 56, hue: 30 },
-      { w: 90, h: 20, roof: "flat", kind: "sand", gap: 0, hue: 38 },
-      { w: 254, h: 94, roof: "flat", kind: "pier", gap: 44, hue: 26 },
-      { w: 188, h: 90, roof: "flat", kind: "pier", gap: 60, hue: 34 },
-      { w: 158, h: 86, roof: "flat", kind: "pier", gap: 40, hue: 20 },
-      { w: 232, h: 96, roof: "flat", kind: "pier", gap: 52, hue: 28 },
-      { w: 180, h: 91, roof: "flat", kind: "pier", gap: 46, hue: 24 },
-      { w: 246, h: 93, roof: "flat", kind: "pier", gap: 48, hue: 30 },
-      { w: 186, h: 118, roof: "ramp-right", kind: "cliff", peak: 40, gap: 46, hue: 22 },
-      { w: 176, h: 148, roof: "ramp-right", kind: "cliff", peak: 44, gap: 42, hue: 18 },
-      { w: 196, h: 168, roof: "ramp-left", kind: "cliff", peak: 38, gap: 50, hue: 24 },
-      { w: 164, h: 158, roof: "ramp-right", kind: "cliff", peak: 48, gap: 44, hue: 20 },
-      { w: 186, h: 178, roof: "ramp-left", kind: "cliff", peak: 36, gap: 40, hue: 16 },
-      { w: 216, h: 188, roof: "ramp-right", kind: "cliff", peak: 46, gap: 52, hue: 22 },
-      { w: 316, h: 24, roof: "dune", kind: "dune", peak: 42, skew: 0.3, gap: 48, hue: 36 },
-      { w: 208, h: 90, roof: "flat", kind: "pier", gap: 54, hue: 28 },
-      { w: 340, h: 22, roof: "dune", kind: "dune", peak: 50, skew: 0.7, gap: 44, hue: 42 },
-      { w: 104, h: 20, roof: "flat", kind: "sand", gap: 0, hue: 44 },
-      { w: 332, h: 26, roof: "dune", kind: "dune", peak: 46, skew: 0.26, gap: 58, hue: 38 },
-      { w: 192, h: 92, roof: "flat", kind: "pier", gap: 50, hue: 26 },
-      { w: 340, h: 24, roof: "dune", kind: "dune", peak: 54, skew: 0.64, gap: 42, hue: 34 },
-      { w: 126, h: 52, roof: "flat", kind: "rock", gap: 46, hue: 18 },
-      { w: 320, h: 22, roof: "dune", kind: "dune", peak: 40, skew: 0.34, gap: 192, hue: 40 },
-      { w: 218, h: 90, roof: "flat", kind: "pier", gap: 48, hue: 30 },
-      { w: 98, h: 22, roof: "flat", kind: "sand", gap: 8, hue: 38 },
-      { w: 238, h: 94, roof: "flat", kind: "pier", gap: 54, hue: 24 },
-      { w: 176, h: 88, roof: "flat", kind: "pier", gap: 42, hue: 32 },
-      { w: 198, h: 92, roof: "flat", kind: "pier", gap: 50, hue: 28 },
-      { w: 340, h: 26, roof: "dune", kind: "dune", peak: 52, skew: 0.22, gap: 204, hue: 36 },
-      { w: 270, h: 90, roof: "flat", kind: "pier", gap: 40, hue: 26 },
+      { w: 198, h: 90, roof: "flat", kind: "pier", gap: 46, hue: 28 },
+      { w: 96, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 34 },
+      { w: 174, h: 148, roof: "ramp-right", kind: "cliff", peak: 44, gap: 48, hue: 18 },
+      { w: 248, h: 92, roof: "flat", kind: "pier", gap: 52, hue: 26 },
+      { w: 320, h: 24, roof: "dune", kind: "dune", peak: 48, skew: 0.24, gap: 40, hue: 38 },
+      { w: 118, h: 56, roof: "flat", kind: "rock", gap: 44, hue: 16 },
+      { w: 156, h: 86, roof: "flat", kind: "pier", gap: 58, hue: 30 },
+      { w: 88, h: 20, roof: "flat", kind: "sand", gap: 0, hue: 42 },
+      { w: 340, h: 26, roof: "dune", kind: "dune", peak: 40, skew: 0.72, gap: 50, hue: 36 },
+      { w: 182, h: 168, roof: "ramp-left", kind: "cliff", peak: 38, gap: 46, hue: 24 },
+      { w: 220, h: 94, roof: "flat", kind: "pier", gap: 42, hue: 20 },
+      { w: 128, h: 50, roof: "flat", kind: "rock", gap: 54, hue: 22 },
+      { w: 292, h: 22, roof: "dune", kind: "dune", peak: 46, skew: 0.3, gap: 48, hue: 44 },
+      { w: 168, h: 90, roof: "flat", kind: "pier", gap: 60, hue: 28 },
+      { w: 100, h: 22, roof: "flat", kind: "sand", gap: 6, hue: 32 },
+      { w: 196, h: 158, roof: "ramp-right", kind: "cliff", peak: 48, gap: 44, hue: 20 },
+      { w: 154, h: 178, roof: "ramp-left", kind: "cliff", peak: 36, gap: 40, hue: 16 },
+      { w: 204, h: 188, roof: "ramp-right", kind: "cliff", peak: 46, gap: 52, hue: 22 },
+      { w: 312, h: 24, roof: "dune", kind: "dune", peak: 42, skew: 0.26, gap: 46, hue: 38 },
+      { w: 176, h: 92, roof: "flat", kind: "pier", gap: 50, hue: 26 },
+      { w: 114, h: 54, roof: "flat", kind: "rock", gap: 42, hue: 18 },
+      { w: 334, h: 22, roof: "dune", kind: "dune", peak: 50, skew: 0.7, gap: 54, hue: 42 },
+      { w: 90, h: 20, roof: "flat", kind: "sand", gap: 0, hue: 44 },
+      { w: 228, h: 88, roof: "flat", kind: "pier", gap: 48, hue: 30 },
+      { w: 298, h: 26, roof: "dune", kind: "dune", peak: 54, skew: 0.64, gap: 44, hue: 34 },
+      { w: 136, h: 96, roof: "flat", kind: "pier", gap: 56, hue: 24 },
+      { w: 160, h: 140, roof: "ramp-left", kind: "cliff", peak: 34, gap: 50, hue: 20 },
+      { w: 308, h: 22, roof: "dune", kind: "dune", peak: 40, skew: 0.34, gap: 192, hue: 40 },
+      { w: 214, h: 90, roof: "flat", kind: "pier", gap: 46, hue: 28 },
+      { w: 94, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 38 },
+      { w: 122, h: 48, roof: "flat", kind: "rock", gap: 52, hue: 16 },
+      { w: 186, h: 94, roof: "flat", kind: "pier", gap: 44, hue: 32 },
+      { w: 324, h: 24, roof: "dune", kind: "dune", peak: 52, skew: 0.22, gap: 204, hue: 36 },
+      { w: 168, h: 156, roof: "ramp-right", kind: "cliff", peak: 42, gap: 48, hue: 18 },
+      { w: 104, h: 22, roof: "flat", kind: "sand", gap: 0, hue: 40 },
+      { w: 252, h: 90, roof: "flat", kind: "pier", gap: 40, hue: 26 }
     ], "coast");
 
     const HIGHWAY = pack("highway", "Highway", "Night asphalt. Don't miss the span.", [
-      { w: 248, h: 88, roof: "flat", kind: "road", gap: 16, hue: 278 },
-      { w: 300, h: 92, roof: "flat", kind: "road", gap: 8, hue: 286 },
-      { w: 176, h: 84, roof: "flat", kind: "road", gap: 0, hue: 270 },
-      { w: 268, h: 90, roof: "flat", kind: "road", gap: 22, hue: 292 },
-      { w: 188, h: 86, roof: "flat", kind: "road", gap: 12, hue: 274 },
-      { w: 328, h: 96, roof: "flat", kind: "road", gap: 4, hue: 282 },
-      { w: 164, h: 82, roof: "flat", kind: "road", gap: 18, hue: 266 },
-      { w: 284, h: 94, roof: "flat", kind: "road", gap: 28, hue: 288 },
-      { w: 248, h: 88, roof: "flat", kind: "road", gap: 10, hue: 276 },
-      { w: 172, h: 90, roof: "flat", kind: "road", gap: 0, hue: 294 },
-      { w: 258, h: 86, roof: "flat", kind: "road", gap: 24, hue: 268 },
-      { w: 292, h: 98, roof: "flat", kind: "road", gap: 14, hue: 280 },
-      { w: 246, h: 118, roof: "ramp-right", kind: "onramp", peak: 36, gap: 8, hue: 284 },
-      { w: 198, h: 152, roof: "ramp-right", kind: "onramp", peak: 40, gap: 16, hue: 272 },
-      { w: 262, h: 184, roof: "ramp-right", kind: "onramp", peak: 44, gap: 4, hue: 290 },
-      { w: 174, h: 168, roof: "ramp-right", kind: "onramp", peak: 32, gap: 20, hue: 266 },
-      { w: 256, h: 198, roof: "ramp-right", kind: "onramp", peak: 38, gap: 12, hue: 278 },
-      { w: 254, h: 216, roof: "ramp-right", kind: "onramp", peak: 42, gap: 6, hue: 286 },
-      { w: 186, h: 208, roof: "ramp-right", kind: "onramp", peak: 34, gap: 18, hue: 274 },
-      { w: 270, h: 224, roof: "ramp-right", kind: "onramp", peak: 46, gap: 148, hue: 292 },
-      { w: 276, h: 218, roof: "flat", kind: "road", gap: 10, hue: 280 },
-      { w: 196, h: 212, roof: "flat", kind: "road", gap: 22, hue: 268 },
-      { w: 244, h: 220, roof: "flat", kind: "road", gap: 8, hue: 288 },
-      { w: 306, h: 216, roof: "flat", kind: "road", gap: 16, hue: 276 },
-      { w: 245, h: 198, roof: "ramp-left", kind: "onramp", peak: 40, gap: 12, hue: 284 },
-      { w: 178, h: 176, roof: "ramp-left", kind: "onramp", peak: 34, gap: 20, hue: 270 },
-      { w: 264, h: 148, roof: "ramp-left", kind: "onramp", peak: 38, gap: 6, hue: 292 },
-      { w: 252, h: 122, roof: "flat", kind: "road", gap: 18, hue: 278 },
-      { w: 168, h: 108, roof: "ramp-left", kind: "onramp", peak: 28, gap: 8, hue: 266 },
-      { w: 294, h: 96, roof: "flat", kind: "road", gap: 24, hue: 286 },
-      { w: 251, h: 90, roof: "flat", kind: "road", gap: 0, hue: 274 },
-      { w: 278, h: 94, roof: "flat", kind: "road", gap: 14, hue: 290 },
-      { w: 190, h: 88, roof: "flat", kind: "road", gap: 28, hue: 268 },
-      { w: 320, h: 98, roof: "flat", kind: "road", gap: 4, hue: 282 },
-      { w: 162, h: 86, roof: "flat", kind: "road", gap: 16, hue: 276 },
-      { w: 248, h: 92, roof: "flat", kind: "road", gap: 10, hue: 294 },
-      { w: 274, h: 88, roof: "flat", kind: "road", gap: 22, hue: 272 },
-      { w: 258, h: 94, roof: "flat", kind: "road", gap: 8, hue: 280 },
-      { w: 242, h: 118, roof: "ramp-right", kind: "overpass", peak: 36, gap: 12, hue: 284 },
-      { w: 198, h: 148, roof: "ramp-right", kind: "overpass", peak: 40, gap: 6, hue: 270 },
-      { w: 266, h: 178, roof: "peak", kind: "overpass", peak: 48, gap: 18, hue: 288 },
-      { w: 174, h: 164, roof: "ramp-right", kind: "overpass", peak: 32, gap: 8, hue: 266 },
-      { w: 244, h: 198, roof: "peak", kind: "overpass", peak: 44, gap: 14, hue: 278 },
-      { w: 258, h: 224, roof: "ramp-right", kind: "overpass", peak: 42, gap: 4, hue: 292 },
-      { w: 186, h: 216, roof: "peak", kind: "overpass", peak: 50, gap: 20, hue: 274 },
-      { w: 274, h: 242, roof: "ramp-right", kind: "overpass", peak: 38, gap: 10, hue: 286 },
-      { w: 248, h: 254, roof: "peak", kind: "overpass", peak: 46, gap: 16, hue: 268 },
-      { w: 246, h: 268, roof: "ramp-right", kind: "overpass", peak: 40, gap: 8, hue: 280 },
-      { w: 168, h: 258, roof: "peak", kind: "overpass", peak: 42, gap: 22, hue: 294 },
-      { w: 286, h: 274, roof: "ramp-right", kind: "overpass", peak: 44, gap: 6, hue: 276 },
-      { w: 188, h: 266, roof: "peak", kind: "overpass", peak: 48, gap: 12, hue: 272 },
-      { w: 253, h: 278, roof: "ramp-right", kind: "overpass", peak: 36, gap: 18, hue: 290 },
-      { w: 260, h: 270, roof: "peak", kind: "overpass", peak: 52, gap: 4, hue: 284 },
-      { w: 255, h: 264, roof: "flat", kind: "overpass", gap: 188, hue: 278 },
-      { w: 280, h: 258, roof: "flat", kind: "road", gap: 10, hue: 286 },
-      { w: 178, h: 250, roof: "flat", kind: "road", gap: 16, hue: 270 },
-      { w: 248, h: 246, roof: "flat", kind: "road", gap: 8, hue: 292 },
-      { w: 302, h: 240, roof: "flat", kind: "road", gap: 22, hue: 276 },
-      { w: 196, h: 234, roof: "flat", kind: "road", gap: 12, hue: 268 },
-      { w: 266, h: 228, roof: "flat", kind: "road", gap: 6, hue: 284 },
-      { w: 336, h: 222, roof: "flat", kind: "road", gap: 8, hue: 280 },
-      { w: 256, h: 218, roof: "flat", kind: "road", gap: 18, hue: 272 },
-      { w: 184, h: 224, roof: "flat", kind: "road", gap: 0, hue: 288 },
-      { w: 290, h: 220, roof: "flat", kind: "road", gap: 14, hue: 266 },
-      { w: 247, h: 216, roof: "flat", kind: "road", gap: 24, hue: 294 },
-      { w: 276, h: 222, roof: "flat", kind: "road", gap: 6, hue: 278 },
-      { w: 164, h: 218, roof: "flat", kind: "road", gap: 12, hue: 286 },
-      { w: 322, h: 224, roof: "flat", kind: "road", gap: 20, hue: 274 },
-      { w: 242, h: 220, roof: "flat", kind: "road", gap: 4, hue: 290 },
-      { w: 198, h: 216, roof: "flat", kind: "road", gap: 16, hue: 268 },
-      { w: 276, h: 222, roof: "flat", kind: "road", gap: 10, hue: 282 },
-      { w: 172, h: 218, roof: "flat", kind: "road", gap: 0, hue: 276 },
-      { w: 304, h: 224, roof: "flat", kind: "road", gap: 22, hue: 292 },
-      { w: 254, h: 220, roof: "flat", kind: "road", gap: 8, hue: 270 },
-      { w: 257, h: 216, roof: "flat", kind: "road", gap: 14, hue: 284 },
-      { w: 348, h: 222, roof: "flat", kind: "road", gap: 18, hue: 278 },
-      { w: 186, h: 218, roof: "flat", kind: "road", gap: 6, hue: 266 },
-      { w: 270, h: 224, roof: "flat", kind: "road", gap: 12, hue: 288 },
-      { w: 242, h: 220, roof: "flat", kind: "road", gap: 26, hue: 274 },
-      { w: 286, h: 216, roof: "flat", kind: "road", gap: 4, hue: 280 },
-      { w: 244, h: 222, roof: "flat", kind: "road", gap: 16, hue: 294 },
-      { w: 246, h: 188, roof: "ramp-left", kind: "onramp", peak: 36, gap: 10, hue: 286 },
-      { w: 192, h: 154, roof: "ramp-left", kind: "onramp", peak: 32, gap: 18, hue: 272 },
-      { w: 268, h: 122, roof: "ramp-left", kind: "onramp", peak: 40, gap: 8, hue: 290 },
-      { w: 248, h: 108, roof: "flat", kind: "road", gap: 14, hue: 278 },
-      { w: 176, h: 96, roof: "flat", kind: "road", gap: 22, hue: 266 },
-      { w: 296, h: 90, roof: "flat", kind: "road", gap: 6, hue: 284 },
-      { w: 252, h: 94, roof: "flat", kind: "road", gap: 12, hue: 274 },
-      { w: 168, h: 88, roof: "flat", kind: "road", gap: 0, hue: 292 },
-      { w: 274, h: 92, roof: "flat", kind: "road", gap: 20, hue: 280 },
-      { w: 254, h: 86, roof: "flat", kind: "road", gap: 8, hue: 268 },
-      { w: 255, h: 116, roof: "ramp-right", kind: "onramp", peak: 34, gap: 10, hue: 282 },
-      { w: 194, h: 146, roof: "ramp-right", kind: "onramp", peak: 38, gap: 16, hue: 270 },
-      { w: 264, h: 176, roof: "ramp-right", kind: "onramp", peak: 42, gap: 6, hue: 288 },
-      { w: 172, h: 162, roof: "ramp-right", kind: "onramp", peak: 30, gap: 20, hue: 276 },
-      { w: 248, h: 194, roof: "ramp-right", kind: "onramp", peak: 36, gap: 12, hue: 266 },
-      { w: 241, h: 218, roof: "ramp-right", kind: "onramp", peak: 44, gap: 8, hue: 294 },
-      { w: 278, h: 236, roof: "ramp-right", kind: "onramp", peak: 40, gap: 14, hue: 284 },
-      { w: 184, h: 228, roof: "peak", kind: "overpass", peak: 46, gap: 4, hue: 272 },
-      { w: 256, h: 248, roof: "ramp-right", kind: "overpass", peak: 38, gap: 18, hue: 290 },
-      { w: 245, h: 258, roof: "peak", kind: "overpass", peak: 50, gap: 10, hue: 278 },
-      { w: 166, h: 250, roof: "ramp-right", kind: "overpass", peak: 34, gap: 22, hue: 268 },
-      { w: 280, h: 266, roof: "peak", kind: "overpass", peak: 44, gap: 8, hue: 286 },
-      { w: 248, h: 274, roof: "ramp-right", kind: "overpass", peak: 40, gap: 16, hue: 274 },
-      { w: 198, h: 268, roof: "peak", kind: "overpass", peak: 48, gap: 6, hue: 292 },
-      { w: 270, h: 278, roof: "ramp-right", kind: "overpass", peak: 42, gap: 12, hue: 280 },
-      { w: 244, h: 270, roof: "flat", kind: "overpass", gap: 198, hue: 276 },
-      { w: 368, h: 262, roof: "flat", kind: "road", gap: 24, hue: 282 },
+      { w: 330, h: 86, hL: 86, hR: 74, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 278 },
+      { w: 290, h: 132, hL: 74, hR: 132, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 286 },
+      { w: 350, h: 132, hL: 132, hR: 68, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 270 },
+      { w: 282, h: 118, hL: 68, hR: 118, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 292 },
+      { w: 310, h: 118, hL: 118, hR: 72, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 274 },
+      { w: 270, h: 108, hL: 72, hR: 108, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 282 },
+      { w: 330, h: 108, hL: 108, hR: 78, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 266 },
+      { w: 292, h: 146, hL: 78, hR: 146, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 288 },
+      { w: 320, h: 146, hL: 146, hR: 70, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 276 },
+      { w: 272, h: 124, hL: 70, hR: 124, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 294 },
+      { w: 300, h: 124, hL: 124, hR: 82, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 268 },
+      { w: 340, h: 82, hL: 82, hR: 76, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 280 },
+      { w: 260, h: 118, hL: 76, hR: 118, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 284 },
+      { w: 270, h: 158, hL: 118, hR: 158, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 272 },
+      { w: 250, h: 198, hL: 158, hR: 198, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 290 },
+      { w: 260, h: 232, hL: 198, hR: 232, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 266 },
+      { w: 282, h: 248, hL: 232, hR: 248, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 278 },
+      { w: 270, h: 248, hL: 248, hR: 228, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 286 },
+      { w: 260, h: 242, hL: 228, hR: 242, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 274 },
+      { w: 272, h: 242, hL: 242, hR: 236, roof: "span", kind: "overpass", ease: "lin", gap: 152, hue: 292 },
+      { w: 290, h: 228, hL: 228, hR: 210, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 280 },
+      { w: 282, h: 210, hL: 210, hR: 168, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 268 },
+      { w: 310, h: 168, hL: 168, hR: 92, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 288 },
+      { w: 270, h: 92, hL: 92, hR: 78, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 276 },
+      { w: 330, h: 128, hL: 78, hR: 128, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 284 },
+      { w: 292, h: 128, hL: 128, hR: 70, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 270 },
+      { w: 272, h: 110, hL: 70, hR: 110, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 292 },
+      { w: 320, h: 110, hL: 110, hR: 74, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 278 },
+      { w: 260, h: 142, hL: 74, hR: 142, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 266 },
+      { w: 300, h: 142, hL: 142, hR: 80, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 286 },
+      { w: 282, h: 118, hL: 80, hR: 118, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 274 },
+      { w: 350, h: 118, hL: 118, hR: 72, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 290 },
+      { w: 260, h: 96, hL: 72, hR: 96, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 268 },
+      { w: 310, h: 96, hL: 96, hR: 84, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 282 },
+      { w: 250, h: 130, hL: 84, hR: 130, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 276 },
+      { w: 260, h: 172, hL: 130, hR: 172, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 294 },
+      { w: 260, h: 208, hL: 172, hR: 208, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 272 },
+      { w: 270, h: 244, hL: 208, hR: 244, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 288 },
+      { w: 282, h: 268, hL: 244, hR: 268, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 266 },
+      { w: 270, h: 268, hL: 268, hR: 248, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 278 },
+      { w: 260, h: 274, hL: 248, hR: 274, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 284 },
+      { w: 272, h: 274, hL: 274, hR: 256, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 270 },
+      { w: 292, h: 278, hL: 256, hR: 278, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 292 },
+      { w: 260, h: 278, hL: 278, hR: 262, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 274 },
+      { w: 250, h: 270, hL: 262, hR: 270, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 286 },
+      { w: 270, h: 270, hL: 270, hR: 258, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 268 },
+      { w: 282, h: 274, hL: 258, hR: 274, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 280 },
+      { w: 260, h: 274, hL: 274, hR: 264, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 276 },
+      { w: 272, h: 272, hL: 264, hR: 272, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 294 },
+      { w: 260, h: 272, hL: 272, hR: 260, roof: "span", kind: "overpass", ease: "lin", gap: 188, hue: 278 },
+      { w: 310, h: 252, hL: 252, hR: 248, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 286 },
+      { w: 282, h: 268, hL: 248, hR: 268, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 270 },
+      { w: 330, h: 268, hL: 268, hR: 236, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 292 },
+      { w: 270, h: 258, hL: 236, hR: 258, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 276 },
+      { w: 290, h: 258, hL: 258, hR: 242, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 268 },
+      { w: 320, h: 270, hL: 242, hR: 270, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 284 },
+      { w: 272, h: 270, hL: 270, hR: 248, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 278 },
+      { w: 292, h: 262, hL: 248, hR: 262, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 266 },
+      { w: 340, h: 262, hL: 262, hR: 238, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 288 },
+      { w: 260, h: 254, hL: 238, hR: 254, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 274 },
+      { w: 300, h: 254, hL: 254, hR: 246, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 290 },
+      { w: 282, h: 266, hL: 246, hR: 266, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 280 },
+      { w: 310, h: 266, hL: 266, hR: 240, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 272 },
+      { w: 270, h: 258, hL: 240, hR: 258, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 294 },
+      { w: 330, h: 258, hL: 258, hR: 244, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 282 },
+      { w: 292, h: 268, hL: 244, hR: 268, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 276 },
+      { w: 272, h: 268, hL: 268, hR: 250, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 266 },
+      { w: 320, h: 250, hL: 250, hR: 236, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 288 },
+      { w: 260, h: 260, hL: 236, hR: 260, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 274 },
+      { w: 290, h: 260, hL: 260, hR: 248, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 280 },
+      { w: 282, h: 248, hL: 248, hR: 242, roof: "span", kind: "road", ease: "lin", gap: 0, hue: 294 },
+      { w: 270, h: 242, hL: 242, hR: 188, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 286 },
+      { w: 282, h: 188, hL: 188, hR: 142, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 272 },
+      { w: 290, h: 142, hL: 142, hR: 96, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 290 },
+      { w: 310, h: 96, hL: 96, hR: 74, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 278 },
+      { w: 270, h: 118, hL: 74, hR: 118, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 266 },
+      { w: 330, h: 118, hL: 118, hR: 70, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 284 },
+      { w: 282, h: 108, hL: 70, hR: 108, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 274 },
+      { w: 300, h: 108, hL: 108, hR: 78, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 292 },
+      { w: 260, h: 134, hL: 78, hR: 134, roof: "span", kind: "onramp", ease: "roll", gap: 0, hue: 280 },
+      { w: 320, h: 134, hL: 134, hR: 72, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 268 },
+      { w: 260, h: 122, hL: 72, hR: 122, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 282 },
+      { w: 270, h: 164, hL: 122, hR: 164, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 270 },
+      { w: 250, h: 202, hL: 164, hR: 202, roof: "span", kind: "onramp", ease: "lin", gap: 0, hue: 288 },
+      { w: 260, h: 236, hL: 202, hR: 236, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 276 },
+      { w: 272, h: 258, hL: 236, hR: 258, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 266 },
+      { w: 282, h: 258, hL: 258, hR: 244, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 294 },
+      { w: 260, h: 272, hL: 244, hR: 272, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 284 },
+      { w: 270, h: 272, hL: 272, hR: 250, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 272 },
+      { w: 292, h: 268, hL: 250, hR: 268, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 290 },
+      { w: 260, h: 268, hL: 268, hR: 256, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 278 },
+      { w: 250, h: 274, hL: 256, hR: 274, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 268 },
+      { w: 272, h: 274, hL: 274, hR: 262, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 286 },
+      { w: 282, h: 278, hL: 262, hR: 278, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 274 },
+      { w: 270, h: 278, hL: 278, hR: 264, roof: "span", kind: "overpass", ease: "roll", gap: 0, hue: 292 },
+      { w: 260, h: 270, hL: 264, hR: 270, roof: "span", kind: "overpass", ease: "lin", gap: 0, hue: 280 },
+      { w: 290, h: 270, hL: 270, hR: 258, roof: "span", kind: "overpass", ease: "lin", gap: 198, hue: 276 },
+      { w: 370, h: 252, hL: 252, hR: 248, roof: "span", kind: "road", ease: "roll", gap: 0, hue: 282 }
     ], "highway");
 
     const catalog = [NEON, COAST, HIGHWAY];
@@ -462,6 +456,13 @@
     function roofYOn(b, wx) {
       const local = wx - b.x;
       if (local < 0 || local > b.w) return null;
+      if (b.hL != null && b.hR != null) {
+        let t = local / b.w;
+        if (t < 0) t = 0;
+        else if (t > 1) t = 1;
+        if (b.ease === "roll") t = 0.5 - 0.5 * Math.cos(t * Math.PI);
+        return active.groundY - (b.hL + (b.hR - b.hL) * t);
+      }
       const eave = eaveY(b);
       const peak = b.peak;
       if (b.roof === "dune" || b.kind === "dune") {
@@ -527,6 +528,15 @@
     function roofPoly(b) {
       const eave = eaveY(b);
       const x0 = b.x, x1 = b.x + b.w, pk = b.peak;
+      if (b.hL != null && b.hR != null) {
+        const n = b.ease === "roll" ? 10 : 1;
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
+          const x = x0 + b.w * (i / n);
+          pts.push([x, roofYOn(b, x)]);
+        }
+        return pts;
+      }
       if (b.roof === "dune" || b.kind === "dune") {
         const pts = [];
         for (let i = 0; i <= 12; i++) {
@@ -1122,19 +1132,23 @@
       const poly = Buildings.roofPoly(b);
 
       if (kind === "pier") {
+        const step = 16 + ((b.x | 0) % 19);
+        const post = 4 + ((b.w | 0) % 4);
         ctx.fillStyle = "#3a2214";
-        for (let x = sx + 10; x < sx + b.w - 6; x += 26) {
-          ctx.fillRect(x, top + 8, 5, gy - top);
+        for (let x = sx + 8; x < sx + b.w - 6; x += step) {
+          ctx.fillRect(x, top + 8, post, gy - top);
           ctx.fillStyle = "rgba(255,255,255,0.55)";
           ctx.beginPath();
-          ctx.ellipse(x + 2, gy, 9, 3, 0, 0, Math.PI * 2);
+          ctx.ellipse(x + post * 0.5, gy, 7 + post, 3, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.fillStyle = "#3a2214";
         }
+        const deck = 10 + ((b.x | 0) % 6);
         ctx.fillStyle = "#8a5a28";
-        ctx.fillRect(sx, top - 4, b.w, 12);
+        ctx.fillRect(sx, top - 4, b.w, deck);
         ctx.fillStyle = "#c4843c";
-        for (let x = 0; x < b.w; x += 10) ctx.fillRect(sx + x, top - 4, 7, 12);
+        const plank = 6 + ((b.w | 0) % 7);
+        for (let x = 0; x < b.w; x += plank + 3) ctx.fillRect(sx + x, top - 4, plank, deck);
         ctx.strokeStyle = "#ffd24a";
         ctx.lineWidth = 2;
         ctx.shadowColor = "#ff8a20";
@@ -1256,54 +1270,75 @@
       ctx.stroke();
     }
 
-    function drawHighwayPad(b, cam) {
-      const sx = b.x - cam;
-      const eave = Buildings.eaveY(b);
-      const top = Buildings.screenY(eave);
+    function drawHighwayRibbon(cam) {
+      const list = Buildings.buildings();
       const gy = Buildings.screenY(Buildings.groundY());
-      const poly = Buildings.roofPoly(b);
-      const hue = b.hue || 280;
-      const kind = b.kind || "road";
-      const deckH = 16;
-
-      if (kind === "overpass" || b.h > 140) {
-        ctx.fillStyle = "#16101c";
-        for (let x = sx + 18; x < sx + b.w - 10; x += 56) {
-          ctx.fillRect(x, top + 8, 10, Math.max(0, gy - top - 8));
+      const visW = Kernel.view.w;
+      let run = [];
+      function flush() {
+        if (!run.length) return;
+        const first = run[0], last = run[run.length - 1];
+        if (last.x + last.w < cam - 80 || first.x > cam + visW + 80) {
+          run = [];
+          return;
         }
-      } else {
-        ctx.fillStyle = "#1a1522";
-        ctx.fillRect(sx + 4, top, b.w - 8, Math.max(0, gy - top));
+        const pts = [];
+        for (let i = 0; i < run.length; i++) {
+          const poly = Buildings.roofPoly(run[i]);
+          for (let p = 0; p < poly.length; p++) {
+            if (pts.length && p === 0) continue;
+            pts.push(poly[p]);
+          }
+        }
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0] - cam, Buildings.screenY(pts[0][1]));
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] - cam, Buildings.screenY(pts[i][1]));
+        ctx.lineTo(pts[pts.length - 1][0] - cam, gy);
+        ctx.lineTo(pts[0][0] - cam, gy);
+        ctx.closePath();
+        const sg = ctx.createLinearGradient(0, Buildings.screenY(Math.min(...pts.map(p => p[1]))), 0, gy);
+        sg.addColorStop(0, "#2a2836");
+        sg.addColorStop(0.5, "#18141f");
+        sg.addColorStop(1, "#0c0910");
+        ctx.fillStyle = sg;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0] - cam, Buildings.screenY(pts[0][1]));
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] - cam, Buildings.screenY(pts[i][1]));
+        for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(pts[i][0] - cam, Buildings.screenY(pts[i][1]) + 16);
+        ctx.closePath();
+        ctx.fillStyle = "#34323e";
+        ctx.fill();
+
+        const hue = run[0].hue || 280;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0] - cam, Buildings.screenY(pts[0][1]));
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] - cam, Buildings.screenY(pts[i][1]));
+        ctx.strokeStyle = `hsl(${hue} 90% 65%)`;
+        ctx.shadowColor = `hsl(${hue} 100% 60%)`;
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.save();
+        ctx.strokeStyle = "#ffd24a";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([12, 14]);
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0] - cam, Buildings.screenY(pts[0][1]) + 3);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] - cam, Buildings.screenY(pts[i][1]) + 3);
+        ctx.stroke();
+        ctx.restore();
+        run = [];
       }
-
-      ctx.beginPath();
-      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
-      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0] - cam, Buildings.screenY(poly[i][1]));
-      ctx.lineTo(poly[poly.length - 1][0] - cam, Buildings.screenY(poly[poly.length - 1][1]) + deckH);
-      ctx.lineTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]) + deckH);
-      ctx.closePath();
-      ctx.fillStyle = "#2a2834";
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]));
-      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0] - cam, Buildings.screenY(poly[i][1]));
-      ctx.strokeStyle = `hsl(${hue} 90% 65%)`;
-      ctx.shadowColor = `hsl(${hue} 100% 60%)`;
-      ctx.shadowBlur = 10;
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      ctx.save();
-      ctx.strokeStyle = "#ffd24a";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([12, 14]);
-      ctx.beginPath();
-      ctx.moveTo(poly[0][0] - cam, Buildings.screenY(poly[0][1]) + 2);
-      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0] - cam, Buildings.screenY(poly[i][1]) + 2);
-      ctx.stroke();
-      ctx.restore();
+      for (let i = 0; i < list.length; i++) {
+        run.push(list[i]);
+        const n = list[i + 1];
+        const joined = n && Math.abs(n.x - (list[i].x + list[i].w)) < 0.6;
+        if (!joined) flush();
+      }
     }
 
     function drawBall(snap, cam) {
@@ -1380,29 +1415,92 @@
       const hue = b.hue || 250;
       const eave = Buildings.eaveY(b);
       const top = Buildings.screenY(eave);
-      ctx.fillStyle = `hsl(${hue} 38% 38%)`;
-      ctx.fillRect(sx, top, b.w, b.h);
-      const shade = ctx.createLinearGradient(sx, top, sx + b.w, top);
-      shade.addColorStop(0, "rgba(255,120,220,0.12)");
-      shade.addColorStop(0.5, "rgba(0,0,0,0)");
-      shade.addColorStop(1, "rgba(20,40,90,0.28)");
-      ctx.fillStyle = shade;
-      ctx.fillRect(sx, top, b.w, b.h);
-      ctx.strokeStyle = `hsl(${hue} 70% 68%)`;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(sx, top, b.w, b.h);
+      const gy = Buildings.screenY(Buildings.groundY());
+      const kind = b.kind || "block";
+      const seed = ((b.x | 0) * 17 + b.h * 3 + hue) | 0;
 
-      const cols = Math.max(2, Math.floor(b.w / 28));
-      const rows = Math.max(2, Math.floor(b.h / 36));
-      const padX = 10, padY = 12;
-      const cw = (b.w - padX * 2) / cols;
-      const ch = (b.h - padY * 2 - 8) / rows;
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const on = (r + c + (b.x | 0)) % 5 !== 0;
-          ctx.fillStyle = on ? "rgba(180,230,255,0.9)" : "rgba(40,20,70,0.55)";
-          ctx.fillRect(sx + padX + c * cw + 4, top + padY + r * ch + 4, Math.max(6, cw - 8), Math.max(8, ch - 8));
+      function mass(x, y, w, h) {
+        if (h <= 0 || w <= 0) return;
+        ctx.fillStyle = `hsl(${hue} 38% 38%)`;
+        ctx.fillRect(x, y, w, h);
+        const shade = ctx.createLinearGradient(x, y, x + w, y);
+        shade.addColorStop(0, "rgba(255,120,220,0.12)");
+        shade.addColorStop(0.5, "rgba(0,0,0,0)");
+        shade.addColorStop(1, "rgba(20,40,90,0.28)");
+        ctx.fillStyle = shade;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = `hsl(${hue} 70% 68%)`;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, w, h);
+      }
+
+      function windows(x, y, w, h, style) {
+        if (h < 28 || w < 24) return;
+        const padX = 6 + seed % 5;
+        const padY = 8 + seed % 6;
+        if (style === 1) {
+          const cols = Math.max(2, Math.min(5, Math.floor(w / 16)));
+          const cw = (w - padX * 2) / cols;
+          for (let c = 0; c < cols; c++) {
+            ctx.fillStyle = (c + seed) % 3 ? "rgba(180,230,255,0.9)" : "rgba(40,20,70,0.55)";
+            ctx.fillRect(x + padX + c * cw + 3, y + padY, Math.max(3, cw - 8), Math.max(12, h - padY * 2 - 8));
+          }
+        } else if (style === 2) {
+          const rows = Math.max(2, Math.min(8, Math.floor(h / 26)));
+          const ch = (h - padY * 2) / rows;
+          for (let r = 0; r < rows; r++) {
+            ctx.fillStyle = (r + seed) % 4 ? "rgba(180,230,255,0.85)" : "rgba(40,20,70,0.5)";
+            ctx.fillRect(x + padX, y + padY + r * ch + 3, w - padX * 2, Math.max(4, ch - 8));
+          }
+        } else if (style === 3) {
+          const cols = Math.max(2, Math.floor(w / 36));
+          const rows = Math.max(2, Math.floor(h / 44));
+          const cw = (w - padX * 2) / cols;
+          const ch = (h - padY * 2) / rows;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (((r * 3 + c * 5 + seed) % 7) === 0) continue;
+              ctx.fillStyle = "rgba(180,230,255,0.88)";
+              ctx.fillRect(x + padX + c * cw + 5, y + padY + r * ch + 5, Math.max(6, cw - 12), Math.max(8, ch - 12));
+            }
+          }
+        } else {
+          const cols = Math.max(2, Math.floor(w / (22 + seed % 16)));
+          const rows = Math.max(2, Math.floor(h / (28 + seed % 14)));
+          const cw = (w - padX * 2) / cols;
+          const ch = (h - padY * 2 - 8) / rows;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const on = (r + c * 2 + seed) % 5 !== 0;
+              ctx.fillStyle = on ? "rgba(180,230,255,0.9)" : "rgba(40,20,70,0.55)";
+              ctx.fillRect(x + padX + c * cw + 3, y + padY + r * ch + 3, Math.max(5, cw - 7), Math.max(6, ch - 7));
+            }
+          }
         }
+      }
+
+      if (kind === "stack") {
+        const mid = top + b.h * 0.42;
+        const upperW = Math.max(40, b.w * 0.62);
+        const ux = sx + (seed % 2 ? 0 : b.w - upperW);
+        mass(sx, mid, b.w, gy - mid);
+        windows(sx, mid, b.w, gy - mid, seed % 4);
+        mass(ux, top, upperW, mid - top);
+        windows(ux, top, upperW, mid - top, (seed + 1) % 4);
+      } else if (kind === "tower") {
+        mass(sx, top, b.w, b.h);
+        windows(sx, top, b.w, b.h, 1);
+        ctx.fillStyle = `hsl(${hue} 70% 68%)`;
+        ctx.fillRect(sx + b.w * 0.45, top - 26, 3, 26);
+        ctx.beginPath();
+        ctx.arc(sx + b.w * 0.45 + 1.5, top - 26, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (kind === "slab") {
+        mass(sx, top, b.w, b.h);
+        windows(sx, top, b.w, b.h, 2);
+      } else {
+        mass(sx, top, b.w, b.h);
+        windows(sx, top, b.w, b.h, kind === "spire" ? 3 : seed % 4);
       }
 
       const poly = Buildings.roofPoly(b);
@@ -1421,6 +1519,17 @@
       for (let p = 1; p < poly.length; p++) ctx.lineTo(poly[p][0] - cam, Buildings.screenY(poly[p][1]));
       ctx.stroke();
       ctx.shadowBlur = 0;
+      if (kind === "spire") {
+        const peakX = sx + b.w / 2;
+        const pk = b.peak || 36;
+        const peakY = Buildings.screenY(eave - pk);
+        ctx.strokeStyle = "#3cf6ff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(peakX, peakY);
+        ctx.lineTo(peakX, peakY - 22);
+        ctx.stroke();
+      }
     }
 
     function drawHud(snap) {
@@ -1473,16 +1582,27 @@
           const b = list[i];
           if (b.kind !== "pier") continue;
           if (b.x + b.w < cam - 40 || b.x > cam + w + 40) continue;
-          drawPalm(b.x - cam - 16, gy, 1.05, false);
-          drawPalm(b.x + b.w - cam + 14, gy, 0.9, true);
+          const n = ((b.x | 0) + (b.w | 0)) % 4;
+          if (n === 0) continue;
+          if (n === 1) drawPalm(b.x - cam + b.w * 0.5, gy, 0.95, false);
+          else if (n === 2) {
+            drawPalm(b.x - cam - 16, gy, 1.05, false);
+            drawPalm(b.x + b.w - cam + 14, gy, 0.85, true);
+          } else {
+            drawPalm(b.x - cam + 10, gy, 0.8, false);
+            drawPalm(b.x - cam + b.w * 0.45, gy, 1.1, true);
+            drawPalm(b.x + b.w - cam - 8, gy, 0.7, false);
+          }
         }
       }
-      for (let i = 0; i < list.length; i++) {
-        const b = list[i];
-        if (b.x + b.w < cam - 30 || b.x > cam + w + 30) continue;
-        if (beach) drawCoastPad(b, cam);
-        else if (highway) drawHighwayPad(b, cam);
-        else drawBuilding(b, cam);
+      if (highway) drawHighwayRibbon(cam);
+      else {
+        for (let i = 0; i < list.length; i++) {
+          const b = list[i];
+          if (b.x + b.w < cam - 30 || b.x > cam + w + 30) continue;
+          if (beach) drawCoastPad(b, cam);
+          else drawBuilding(b, cam);
+        }
       }
 
       drawBall(snap, cam);
