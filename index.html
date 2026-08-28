@@ -1424,24 +1424,25 @@
     }
 
     function drawHud(snap) {
-      const { w } = Kernel.view;
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.7)";
-      ctx.shadowBlur = 8;
+      const { w, h } = Kernel.view;
+      const barH = 44;
+      const y0 = h - barH - 12;
+      ctx.fillStyle = "rgba(6,2,20,0.72)";
+      ctx.fillRect(12, y0, w - 24, barH);
+
       ctx.font = `800 22px ${FACE}`;
       ctx.fillStyle = "#fff4d2";
-      ctx.fillText(`${snap.distance} M`, 18, 32);
+      ctx.fillText(`${snap.distance} M`, 24, y0 + 30);
+
       const mw = Math.min(168, Math.max(96, w * 0.22));
-      const mx = w - mw - 18;
+      const mx = w - mw - 28;
       ctx.font = "700 10px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillStyle = snap.gliding ? "#9cffff" : "rgba(214,247,255,0.75)";
-      ctx.fillText("FUEL", mx, 16);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "rgba(0,0,0,0.45)";
-      ctx.fillRect(mx, 22, mw, 8);
+      ctx.fillStyle = snap.gliding ? "#9cffff" : "rgba(214,247,255,0.7)";
+      ctx.fillText("FUEL", mx, y0 + 16);
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(mx, y0 + 22, mw, 10);
       ctx.fillStyle = snap.gliding ? "#9cffff" : snap.meter > 0.25 ? "#5cf0ff" : "#ffd24a";
-      ctx.fillRect(mx, 22, mw * snap.meter, 8);
-      ctx.restore();
+      ctx.fillRect(mx, y0 + 22, mw * snap.meter, 10);
     }
 
     function drawPlay() {
